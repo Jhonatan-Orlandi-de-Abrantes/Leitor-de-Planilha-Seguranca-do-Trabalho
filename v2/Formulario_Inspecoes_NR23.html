@@ -118,6 +118,13 @@ th.col-actions{min-width:64px;text-align:center;}
 .import-msg.success{display:block;background:var(--green-bg);color:var(--green);border:1px solid var(--green);}
 .import-msg.error{display:block;background:var(--red-bg);color:var(--red-dark);border:1px solid var(--red);}
 .import-msg.loading{display:block;background:var(--gray-bg);color:var(--steel);border:1px solid var(--line);}
+.recent-row{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.recent-row .rlbl{font-size:11px;color:var(--steel-light);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.recent-pill{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:4px 10px 4px 12px;font-size:11.5px;color:var(--steel);cursor:pointer;transition:all .12s ease;max-width:320px;}
+.recent-pill:hover{border-color:var(--red);color:var(--red);background:var(--red-bg);}
+.recent-pill .rp-url{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.recent-pill .rp-x{font-size:13px;color:var(--steel-light);margin-left:2px;flex:0 0 auto;}
+.recent-pill .rp-x:hover{color:var(--red);}
 .pill{display:inline-block;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);padding:5px 10px;border-radius:8px;font-size:11px;color:#eaf3fa;}
 .modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(31,36,39,.55);display:flex;align-items:center;justify-content:center;padding:20px;}
 .modal-box{background:#fff;border:1px solid var(--line);border-radius:8px;max-width:460px;width:100%;padding:22px 24px;box-shadow:0 18px 50px rgba(0,0,0,.25);}
@@ -131,6 +138,8 @@ th.col-actions{min-width:64px;text-align:center;}
 .pending-bar .btn.ghost{font-size:13px;padding:6px 8px;border-color:transparent;background:transparent;}
 .pending-bar[hidden],.modal-backdrop[hidden]{display:none !important;}
 .empty-state{padding:40px 20px;text-align:center;color:var(--steel-light);font-size:14px;line-height:1.6;}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:2000;background:var(--amber-bg);border:1.5px solid var(--amber);color:#5c4300;padding:12px 20px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);font-size:13px;font-weight:600;max-width:600px;text-align:center;opacity:0;transition:opacity .3s ease;pointer-events:none;}
+.toast.show{opacity:1;pointer-events:auto;}
 @media (max-width:720px){main{padding:16px 12px 0;}.card{padding:14px 14px;}header.top{padding:20px 16px;}}
 </style>
 </head>
@@ -172,6 +181,7 @@ th.col-actions{min-width:64px;text-align:center;}
       <button class="btn ghost" id="btnLoadSheet" type="button">Recarregar da planilha</button>
       <button class="btn ghost" id="btnClearSheetUrl" type="button">Limpar URL</button>
     </div>
+    <div class="recent-row" id="recentUrls"></div>
     <div class="src-row">
       <span style="font-size:13px;color:var(--steel);">Ou leia um arquivo local (.xls/.xlsx) do seu computador:</span>
       <input type="file" id="fileExcel" accept=".xls,.xlsx">
@@ -283,6 +293,8 @@ th.col-actions{min-width:64px;text-align:center;}
   </div>
 </div>
 
+<div class="toast" id="toastTipo"></div>
+
 <div class="pending-bar" id="pendingBar" hidden>
   <div class="pending-text"><strong>Alterações não salvas.</strong> Aplique as alterações na planilha pelo botão "Salvar na planilha".</div>
   <div class="pending-actions">
@@ -304,6 +316,53 @@ var sourceName = '';
 var filters = {};
 
 var $ = function (id) { return document.getElementById(id); };
+
+var toastTimer = null;
+function showToast(msg, ms) {
+  var el = $('toastTipo');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.classList.remove('show'); }, ms || 4000);
+}
+
+function recentKey() { return 'nr23_recent_urls'; }
+function getRecentUrls() {
+  try { return JSON.parse(localStorage.getItem(recentKey()) || '[]'); } catch (e) { return []; }
+}
+function saveRecentUrl(u) {
+  if (!u) return;
+  var list = getRecentUrls().filter(function (r) { return r !== u; });
+  list.unshift(u);
+  if (list.length > 6) list.length = 6;
+  try { localStorage.setItem(recentKey(), JSON.stringify(list)); } catch (e) {}
+  renderRecentUrls();
+}
+function removeRecentUrl(u) {
+  var list = getRecentUrls().filter(function (r) { return r !== u; });
+  try { localStorage.setItem(recentKey(), JSON.stringify(list)); } catch (e) {}
+  renderRecentUrls();
+}
+function renderRecentUrls() {
+  var host = $('recentUrls');
+  var list = getRecentUrls();
+  if (!list.length) { host.innerHTML = ''; return; }
+  var html = '<span class="rlbl">Recentes:</span>';
+  list.forEach(function (u) {
+    var short = u.replace(/^https?:\/\//, '').replace(/\/exec\/?.*$/, '').slice(0, 40);
+    html += '<span class="recent-pill" data-url="' + escHtml(u) + '">' +
+      '<span class="rp-url" title="' + escHtml(u) + '">' + escHtml(short) + '</span>' +
+      '<span class="rp-x" data-remove="' + escHtml(u) + '">&times;</span></span>';
+  });
+  host.innerHTML = html;
+  host.querySelectorAll('.recent-pill').forEach(function (pill) {
+    pill.addEventListener('click', function (e) {
+      if (e.target.classList.contains('rp-x')) { removeRecentUrl(e.target.dataset.remove); return; }
+      $('webappUrl').value = pill.dataset.url;
+      lss(webappUrlKey(), pill.dataset.url);
+    });
+  });
+}
 
 function profileId() { return P.id; }
 
@@ -779,6 +838,8 @@ function loadFromSheet() {
       renderAll();
       showMsg(o.row_count + ' registro(s) carregados — última leitura ' + (o.updated_at || '-'), 'success');
       clearDirty();
+      saveRecentUrl(getWebappUrl());
+      showToast('Lembre-se: se a tabela for diferente, mude o tipo em "Tipo de tabela" acima.', 5000);
     })
     .catch(function (err) {
       showMsg('Erro ao carregar: ' + friendly(err.message), 'error');
@@ -882,6 +943,7 @@ function readExcel(file) {
       renderAll();
       showMsg(ROWS.length + ' registro(s) importados do arquivo ' + file.name + '.', 'success');
       clearDirty();
+      showToast('Lembre-se: se a tabela for diferente, mude o tipo em "Tipo de tabela" acima.', 5000);
     } catch (e) { alert('Erro ao ler o Excel: ' + (e.message || e)); }
   };
   rd.onerror = function () { alert('Não foi possível ler o arquivo.'); };
@@ -1090,6 +1152,7 @@ $('tipoHint').textContent = 'A interface se adapta automaticamente a este tipo d
   (initial.sheet ? ('Aba na planilha: ' + initial.sheet + ' · cabeçalho na linha ' + initial.headerRow + '.') : '');
 loadMeta();
 renderAll();
+renderRecentUrls();
 var u0 = getWebappUrl();
 if (u0) {
   loadFromSheet().catch(function () {});
