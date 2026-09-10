@@ -1,0 +1,98 @@
+INSTRUÇÕES — RG 007 (Formulário + Dashboard de Extintores)
+============================================================
+
+Este arquivo explica, passo a passo, como configurar o projeto do zero:
+transformar o arquivo Excel em um Google Sheets, instalar o Apps Script,
+implantar e depois usar a URL gerada. Não requer conhecimentos técnicos.
+
+--------------------------------------------------------------------
+PASSO 1 — TRANSFORMAR O EXCEL EM GOOGLE SHEETS
+--------------------------------------------------------------------
+1. Abra o Google Drive (drive.google.com) e entre com sua conta Google.
+2. Clique em "Novo" -> "Upload de arquivo" e selecione o arquivo Excel
+   (ex.: "RG 007 - RELATORIO INSPECAO DE EXTINTORES - BASE 2026.xlsx").
+3. Depois do upload, dê dois cliques no arquivo. Ele abre convertido
+   automaticamente no Google Sheets.
+4. Confira a aba (guia no rodapé) que contém os dados. Ela precisa ter:
+   - Cabeçalho (os títulos das colunas) na LINHA 7;
+   - Dados começando na LINHA 8.
+   Se o nome da aba não for "Cont. extintores", anote o nome atual (você
+   vai informar esse nome no passo 2).
+
+--------------------------------------------------------------------
+PASSO 2 — INSTALAR O APPS SCRIPT (QUAL ARQUIVO/ CÓDIGO USAR)
+--------------------------------------------------------------------
+1. Com a planilha aberta no Google Sheets, clique no menu:
+   Extensões -> Apps Script.
+   (Abre uma nova aba com um editor de código.)
+2. No editor, apague TODO o texto que já vem escrito (o "Código.gs").
+3. Abra no seu computador a pasta "Google Apps Script" deste projeto e
+   abra o arquivo "Code.gs" em um editor de texto (Bloco de Notas).
+4. Copie TODO o conteúdo do Code.gs e cole no editor do Apps Script,
+   substituindo o texto que você apagou.
+5. No INÍCIO do código existem 3 linhas que você pode conferir:
+       var SHEET_NAME     = 'Cont. extintores';
+       var HEADER_ROW     = 7;
+       var FIRST_DATA_ROW = 8;
+   Se a sua aba tiver outro nome, troque 'Cont. extintores' pelo nome da
+   aba. Se os dados começarem em outra linha, ajuste os números.
+6. Clique em "Salvar" (ícone de disquete / Ctrl+S). Se pedir um nome de
+   projeto, pode usar "RG007 Web App".
+
+--------------------------------------------------------------------
+PASSO 3 — IMPLANTAR E PEGAR A URL
+--------------------------------------------------------------------
+1. No Apps Script, clique no botão "Implantar" -> "Nova implantação".
+2. Em "Tipo de implantação", escolha "Aplicativo da web".
+3. Preencha:
+   - Descrição: pode deixar em branco.
+   - Executar como: "Eu".
+   - Quem tem acesso: "Qualquer pessoa".
+4. Clique em "Implantar".
+5. Vai aparecer uma tela pedindo autorização ("Autorizar acesso").
+   Escolha a conta Google -> "Avançado" -> "Continuar (não seguro)" ->
+   "Permitir".
+6. Ao terminar, será exibida uma URL no formato:
+   https://script.google.com/macros/s/XXXXXXXXXX/exec
+   Copie essa URL. GUARDE-A BEM — é ela que conecta tudo.
+
+ATENÇÃO (importante): se um dia o código for alterado, a URL continua a
+mesma, MAS você precisa republicar: Implantar -> Gerenciar implantações
+-> clique no lápis (editar) -> Versão: "Nova versão" -> Implantar.
+
+--------------------------------------------------------------------
+PASSO 4 — ONDE USAR ESSA URL
+--------------------------------------------------------------------
+A MESMA URL é usada em DOIS lugares (formulário e dashboard):
+
+NO FORMULÁRIO (RG_007_Formulario_Inspecao_Extintores.html):
+  - No topo da página há o campo "URL do Web App (Google Apps Script)".
+  - Cole a URL ali. Ela fica salva automaticamente no navegador.
+  - Pronto: o botão "Salvar" grava na planilha e "Recarregar da
+    planilha" traz os dados.
+
+NO DASHBOARD (Dashboard Extintores/Dashboard.html):
+  - Clique no botão "⚙ Selecionar Fonte" (no topo da página).
+  - Escolha a opção 1: "Google Sheets (Web App)" e cole a MESMA URL.
+  - Clique em "Conectar" e o dashboard carrega os dados sozinho,
+    atualizando a cada 3 segundos.
+
+DICA (opcional) — NO DASHBOARD também dá para usar SEM a nuvem:
+  - No botão "Selecionar Fonte", escolha a opção 2 "Arquivo Excel",
+    selecione o arquivo .xlsx do seu computador e clique em
+    "Usar arquivo". O dashboard lê o Excel direto na sua máquina.
+
+--------------------------------------------------------------------
+RESUMO RÁPIDO
+--------------------------------------------------------------------
+- Excel vira Google Sheets pelo Drive (upload).
+- Apps Script: entrar na planilha -> Extensões -> Apps Script ->
+  colar o conteúdo do Code.gs.
+- Implantar como Web App ("Qualquer pessoa") e copiar a URL /exec.
+- Colar a URL no campo do formulário e no botão "Selecionar Fonte"
+  do dashboard.
+- Sempre que alterar o código, republicar como "Nova versão".
+
+Desenvolvido por Jhonatan Orlandi de Abrantes
+(https://github.com/Jhonatan-Orlandi-de-Abrantes/) e por
+Tiago Pereira de Abrantes.

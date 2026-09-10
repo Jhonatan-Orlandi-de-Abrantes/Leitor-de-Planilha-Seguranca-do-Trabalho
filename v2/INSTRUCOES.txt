@@ -1,0 +1,124 @@
+INSTRUÇÕES — V2 (Formulário + Dashboard para TODAS as inspeções)
+=================================================================
+
+Este arquivo explica, passo a passo, como configurar o projeto do zero:
+transformar os arquivos Excel em Google Sheets, instalar o Apps Script,
+implantar e depois usar a URL gerada. Não requer conhecimentos técnicos.
+
+O que mudou na V2: agora UM ÚNICO formulário e UM ÚNICO dashboard
+atendem todos os 6 tipos de inspeção abaixo, através de um seletor
+de tipo no topo das páginas:
+
+  Tipo                        | Aba no Google Sheets
+  ----------------------------|----------------------
+  Extintores (RG 007)         | Cont. extintores
+  Alarme de incêndio (RG 002) | ACIONADORES
+  Hidrantes (RG 006)          | Cont. Hidrantes
+  Chuveiro e lava-olhos (RG 009) | 2026
+  Iluminação de emergência (RG 009) | ILUMINAÇÃO
+  Kit de emergência (Brigada) | Planilha1
+
+Cada tipo conhece automaticamente a aba e a linha do cabeçalho dos dados
+(está configurado no arquivo "profiles.js", que é lido junto com as
+páginas — não é preciso mexer nele).
+
+--------------------------------------------------------------------
+PASSO 1 — TRANSFORMAR OS EXCELS EM GOOGLE SHEETS
+--------------------------------------------------------------------
+1. Abra o Google Drive (drive.google.com) e entre com sua conta Google.
+2. Clique em "Novo" -> "Upload de arquivo" e selecione os arquivos Excel
+   da pasta "Check-list de inspeções NR-23_AMC" deste projeto.
+3. Depois do upload, dê dois cliques em cada arquivo. Ele abre
+   convertido automaticamente no Google Sheets.
+4. Confira que a aba com os dados tem o nome indicado na tabela acima
+   (os nomes das abas já vêm prontos no código).
+
+IMPORTANTE — existem dois jeitos de organizar:
+   Opção A (recomendada se quiser MENOS trabalho): uma única planilha
+   Google com TODAS as abas acima (cada aba copiada de um Excel). Basta
+   instalar o Apps Script UMA vez e uma única URL atende os 6 tipos.
+   Opção B (como era antes): uma planilha Google para cada tipo. Aí é
+   preciso instalar o código em cada planilha e implantar uma URL para
+   cada uma (uma URL por tipo).
+
+--------------------------------------------------------------------
+PASSO 2 — INSTALAR O APPS SCRIPT
+--------------------------------------------------------------------
+1. Com a planilha aberta no Google Sheets, clique no menu:
+   Extensões -> Apps Script.
+   (Abre uma nova aba com um editor de código.)
+2. No editor, apague TODO o texto que já vem escrito (o "Código.gs").
+3. Abra no seu computador a pasta "Google Apps Script" deste projeto e
+   abra o arquivo "Code.gs" em um editor de texto (Bloco de Notas).
+4. Copie TODO o conteúdo do Code.gs e cole no editor do Apps Script,
+   substituindo o texto que você apagou.
+5. Clique em "Salvar" (ícone de disquete / Ctrl+S). Se pedir um nome de
+   projeto, pode usar "NR23 Web App".
+
+O mesmo Code.gs serve para todos os tipos (pedir o tipo na URL: ?tipo=).
+Não é preciso editar a linha da aba — o tipo já diz qual aba ler.
+
+--------------------------------------------------------------------
+PASSO 3 — IMPLANTAR E PEGAR A URL
+--------------------------------------------------------------------
+1. No Apps Script, clique no botão "Implantar" -> "Nova implantação".
+2. Em "Tipo de implantação", escolha "Aplicativo da web".
+3. Preencha:
+   - Descrição: pode deixar em branco.
+   - Executar como: "Eu".
+   - Quem tem acesso: "Qualquer pessoa".
+4. Clique em "Implantar".
+5. Vai aparecer uma tela pedindo autorização ("Autorizar acesso").
+   Escolha a conta Google -> "Avançado" -> "Continuar (não seguro)" ->
+   "Permitir".
+6. Ao terminar, será exibida uma URL no formato:
+   https://script.google.com/macros/s/XXXXXXXXXX/exec
+   Copie essa URL. GUARDE-A BEM — é ela que conecta tudo.
+
+Na Opção A (uma planilha só): essa ÚNICA URL serve todos os tipos.
+Na Opção B (uma planilha por tipo): repita o passo 2 e 3 em cada
+planilha e cole cada URL no tipo correspondente (o formulário e o
+dashboard guardam uma URL separada para cada tipo).
+
+ATENÇÃO (importante): se um dia o código for alterado, a URL continua a
+mesma, MAS você precisa republicar: Implantar -> Gerenciar implantações
+-> clique no lápis (editar) -> Versão: "Nova versão" -> Implantar.
+
+--------------------------------------------------------------------
+PASSO 4 — COMO USAR O FORMULÁRIO
+--------------------------------------------------------------------
+Arquivo: Formulario_Inspecoes_NR23.html
+1. No topo da página, escolha o TIPO de inspeção (ex.: "Extintores").
+2. No campo "URL do Web App (Google Apps Script)", cole a URL do tipo
+   escolhido (ela fica salva automaticamente no navegador).
+3. O formulário gera sozinho a tabela correta para aquele tipo. O botão
+   "Salvar" grava na planilha e "Recarregar da planilha" traz os dados.
+
+--------------------------------------------------------------------
+PASSO 5 — COMO USAR O DASHBOARD
+--------------------------------------------------------------------
+Arquivo: Dashboard/Dashboard.html
+1. Escolha o MESMO tipo de inspeção no seletor no topo.
+2. Clique no botão "⚙ Selecionar Fonte" e escolha:
+   - Opção 1: "Google Sheets (Web App)" — cole a URL do tipo e clique em
+     "Conectar". O dashboard carrega os dados sozinho, atualizando a
+     cada 3 segundos.
+   - Opção 2: "Arquivo Excel" — selecione o arquivo .xlsx/.xls do tipo
+     no seu computador e clique em "Usar arquivo". Funciona sem a nuvem.
+3. O dashboard mostra automaticamente os indicadores, gráficos, filtros
+   e a tabela corretos para o tipo escolhido.
+
+--------------------------------------------------------------------
+RESUMO RÁPIDO
+--------------------------------------------------------------------
+- Excels viram Google Sheets pelo Drive (upload), UM por tipo (opção B)
+  ou todos os tipos em UMA planilha (opção A).
+- Apps Script: entrar na planilha -> Extensões -> Apps Script ->
+  colar o conteúdo do Code.gs.
+- Implantar como Web App ("Qualquer pessoa") e copiar a URL /exec.
+- Escolher o tipo no formulário/dashboard e colar a URL correspondente.
+- Sempre que alterar o código, republicar como "Nova versão".
+
+Desenvolvido por Jhonatan Orlandi de Abrantes
+(https://github.com/Jhonatan-Orlandi-de-Abrantes/) e por
+Tiago Pereira de Abrantes.

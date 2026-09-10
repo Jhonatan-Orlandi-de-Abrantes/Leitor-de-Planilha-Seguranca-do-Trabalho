@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RG 007 — Relatório de Inspeção de Extintores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --red: #C8102E;
+  --red-dark: #8f0b20;
+  --charcoal: #1F2427;
+  --steel: #3E4C59;
+  --steel-light: #64748b;
+  --paper: #F3F4F2;
+  --paper-2: #ffffff;
+  --line: #d9dcd8;
+  --amber: #E8A400;
+  --green: #1E824C;
+  --green-bg: #e5f4ec;
+  --red-bg: #fbe6e9;
+  --amber-bg: #fdf3e0;
+  --gray-bg: #eceeec;
+  --font-head: 'Oswald', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--charcoal);font-family:var(--font-body);}
+body{padding-bottom:60px;}
+
+/* ---------- HEADER / HAZARD BAND ---------- */
+.hazard-band{
+  height:10px;
+  background:repeating-linear-gradient(135deg, var(--red) 0 18px, var(--charcoal) 18px 36px);
+}
+header.top{
+  background:var(--charcoal);
+  color:#fff;
+  padding:28px 32px 24px;
+  position:relative;
+  overflow:hidden;
+}
+header.top::after{
+  content:"";
+  position:absolute;
+  right:-60px; top:-60px;
+  width:220px; height:220px;
+  border-radius:50%;
+  background:radial-gradient(circle at center, rgba(200,16,46,0.35), transparent 70%);
+}
+.top-inner{position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;}
+.tag{
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.14em;
+  color:var(--amber); text-transform:uppercase; margin-bottom:10px;
+}
+.tag::before{content:""; width:8px; height:8px; background:var(--red); border-radius:50%; box-shadow:0 0 0 3px rgba(200,16,46,.25);}
+h1{
+  font-family:var(--font-head); font-weight:700; font-size:clamp(24px,3.4vw,36px);
+  letter-spacing:.01em; margin:0 0 4px; text-transform:uppercase;
+}
+.subtitle{color:#c7ccd1; font-size:14px; margin:0;}
+.doc-code{
+  font-family:var(--font-mono); font-size:13px; color:#fff;
+  background:var(--red); padding:8px 14px; border-radius:2px;
+  letter-spacing:.05em; white-space:nowrap;
+}
+
+main{max-width:1600px; margin:0 auto; padding:24px 24px 0;}
+
+/* ---------- CARD ---------- */
+.card{
+  background:var(--paper-2); border:1px solid var(--line); border-radius:6px;
+  padding:20px 22px; margin-bottom:20px;
+}
+.card h2{
+  font-family:var(--font-head); font-size:15px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--steel); margin:0 0 16px;
+  border-left:4px solid var(--red); padding-left:10px;
+}
+
+/* ---------- INSPECTION META FORM ---------- */
+.meta-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px;}
+.field label{display:block; font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--steel); margin-bottom:6px;}
+.field input, .field select{
+  width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:4px;
+  font-family:var(--font-body); font-size:14px; background:#fff; color:var(--charcoal);
+}
+.field input:focus, .field select:focus{outline:none; border-color:var(--red);}
+
+/* ---------- DASHBOARD ---------- */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px;}
+.stat{
+  border:1px solid var(--line); border-radius:6px; padding:14px 16px; background:#fff;
+  border-left:4px solid var(--steel-light);
+}
+.stat.total{border-left-color:var(--charcoal);}
+.stat.c{border-left-color:var(--green);}
+.stat.nc{border-left-color:var(--red);}
+.stat.na{border-left-color:var(--amber);}
+.stat.pend{border-left-color:var(--steel-light);}
+.stat .num{font-family:var(--font-head); font-size:28px; font-weight:600; line-height:1;}
+.stat .lbl{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--steel-light); margin-top:6px;}
+
+/* ---------- FILTERS ---------- */
+.filters{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;}
+.filters .field{flex:1 1 200px; min-width:160px;}
+.filters .field.search{flex:2 1 280px;}
+.checkbox-field{display:flex; align-items:center; gap:8px; padding-bottom:10px;}
+.checkbox-field input{width:16px; height:16px; accent-color:var(--red);}
+.checkbox-field label{margin:0; font-size:13px; font-weight:600; color:var(--steel); text-transform:none; letter-spacing:0;}
+.btn{
+  font-family:var(--font-body); font-weight:600; font-size:13px; letter-spacing:.02em;
+  padding:10px 18px; border-radius:4px; border:1.5px solid var(--charcoal);
+  background:#fff; color:var(--charcoal); cursor:pointer; transition:all .15s ease;
+  white-space:nowrap;
+}
+.btn:hover{background:var(--charcoal); color:#fff;}
+.btn.primary{background:var(--red); border-color:var(--red); color:#fff;}
+.btn.primary:hover{background:var(--red-dark); border-color:var(--red-dark);}
+.btn.ghost{border-color:var(--line); color:var(--steel);}
+.btn.ghost:hover{background:var(--paper); color:var(--charcoal);}
+.result-count{font-size:12.5px; color:var(--steel-light); margin-top:10px;}
+
+/* ---------- TABLE ---------- */
+.table-wrap{overflow:auto; max-height:640px; border-top:1px solid var(--line);}
+table{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px;}
+thead th{
+  position:sticky; top:0; z-index:3;
+  background:var(--charcoal); color:#fff;
+  font-family:var(--font-body); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em;
+  padding:9px 8px; text-align:left; border-right:1px solid #33393d; white-space:nowrap;
+}
+thead tr.group-row th{
+  top:0; font-family:var(--font-head); font-size:11.5px; letter-spacing:.06em;
+  text-align:center; background:var(--red);
+}
+thead tr.group-row th.group-check{background:var(--steel);}
+thead tr:nth-child(2) th{top:33px;}
+tbody td{
+  padding:6px 8px; border-bottom:1px solid var(--line); border-right:1px solid #ececea;
+  white-space:nowrap; background:#fff; vertical-align:middle;
+}
+tbody tr:nth-child(even) td{background:#fafafa;}
+tbody tr:hover td{background:#fdf1ee;}
+tbody tr.row-hidden{display:none;}
+
+th.col-qtd, td.col-qtd{width:70px;}
+th.col-id, td.col-id{width:70px;}
+th.col-local, td.col-local{min-width:220px; white-space:normal;}
+td.col-local{font-weight:600;}
+
+td.num{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+
+select.chk{
+  width:64px; padding:5px 4px; border-radius:4px; border:1.5px solid var(--line);
+  font-family:var(--font-body); font-weight:700; font-size:12px; text-align:center;
+  background:#fff; color:var(--steel); cursor:pointer;
+}
+select.chk.status-c{background:var(--green-bg); border-color:var(--green); color:var(--green);}
+select.chk.status-nc{background:var(--red-bg); border-color:var(--red); color:var(--red-dark);}
+select.chk.status-na{background:var(--amber-bg); border-color:var(--amber); color:#8a6300;}
+select.chk:focus{outline:none;}
+
+td.col-obs{min-width:340px; white-space:normal;}
+.obs-cell{display:flex; flex-direction:column; gap:4px; min-width:320px;}
+.obs-cell select{
+  padding:5px 6px; border:1.5px solid var(--line); border-radius:4px; font-size:11.5px; background:#fff; color:var(--steel);
+}
+.obs-cell textarea{
+  width:100%; min-height:44px; resize:vertical; padding:6px 7px; border:1.5px solid var(--line);
+  border-radius:4px; font-family:var(--font-body); font-size:12px; color:var(--charcoal); white-space:pre-wrap;
+}
+.obs-cell textarea:focus, .obs-cell select:focus{outline:none; border-color:var(--red);}
+
+.badge-overdue{display:inline-block; font-size:10px; font-weight:700; color:#fff; background:var(--red); padding:2px 6px; border-radius:3px; margin-left:6px; vertical-align:middle;}
+
+.export-card{border-left:4px solid var(--red);}
+.import-card{border-left:4px solid var(--steel);}
+.import-msg{margin-top:12px; font-size:13px; font-weight:600; padding:10px 14px; border-radius:4px; display:none;}
+.import-msg.success{display:block; background:var(--green-bg); color:var(--green); border:1px solid var(--green);}
+.import-msg.error{display:block; background:var(--red-bg); color:var(--red-dark); border:1px solid var(--red);}
+.import-msg.loading{display:block; background:var(--gray-bg); color:var(--steel); border:1px solid var(--line);}
+
+/* ---------- CRUD / ACOES ---------- */
+input.ed{
+  border:1px solid transparent; background:transparent; border-radius:3px;
+  font-family:var(--font-body); font-size:12.5px; color:var(--charcoal);
+  padding:2px 3px; width:100%; min-width:45px;
+}
+input.ed:hover{border-color:var(--line); background:#fff;}
+input.ed:focus{outline:none; border-color:var(--red); background:#fff; box-shadow:0 0 0 2px rgba(200,16,46,.08);}
+.num input.ed{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+.num.datecell{display:flex; align-items:center; gap:5px; min-width:118px;}
+.num.datecell input.ed{flex:1 1 auto; width:auto; min-width:72px;}
+.num.datecell .badge-overdue{margin-left:0; flex:0 0 auto; white-space:nowrap;}
+th.col-actions{min-width:64px; text-align:center;}
+.col-actions{white-space:nowrap; text-align:center;}
+.row-actions{display:flex; gap:6px; justify-content:center; align-items:center;}
+.btn-mini{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:4px; border:1.5px solid var(--line);
+  background:#fff; cursor:pointer; font-size:14px; line-height:1; color:var(--steel);
+  transition:all .12s ease;
+}
+.btn-mini:hover{background:var(--charcoal); color:#fff; border-color:var(--charcoal);}
+.btn-mini.del{border-color:var(--red-bg); color:var(--red-dark);}
+.btn-mini.del:hover{background:var(--red); border-color:var(--red); color:#fff;}
+.btn-mini.add{width:auto; padding:0 10px; font-size:12px; font-weight:600;}
+.addbar{display:flex; justify-content:flex-end; margin:0 22px 10px;}
+.addbtn{
+  font-family:var(--font-body); font-weight:600; font-size:13px;
+  padding:9px 16px; border-radius:4px; border:1.5px solid var(--red);
+  background:#fff; color:var(--red); cursor:pointer; transition:all .15s ease;
+}
+.addbtn:hover{background:var(--red); color:#fff;}
+
+/* ---------- MODAL DE CONFIRMAÇÃO ---------- */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:1000;
+  background:rgba(31,36,39,.55);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.modal-box{
+  background:#fff; border:1px solid var(--line); border-radius:8px;
+  max-width:460px; width:100%; padding:22px 24px;
+  box-shadow:0 18px 50px rgba(0,0,0,.25);
+}
+.modal-title{
+  font-family:var(--font-head); font-weight:600; font-size:16px; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--charcoal); margin:0 0 10px;
+  border-left:4px solid var(--red); padding-left:10px;
+}
+.modal-text{font-size:13.5px; line-height:1.5; color:var(--steel); margin:0 0 20px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px;}
+
+/* ---------- AVISO FIXO DE ALTERAÇÕES NÃO SALVAS ---------- */
+.pending-bar{
+  position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:900;
+  display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap;
+  background:var(--amber-bg); border:1.5px solid var(--amber); color:#5c4300;
+  padding:12px 16px; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,.18);
+  max-width:760px; font-size:13px; font-weight:600;
+}
+.pending-text{line-height:1.4;}
+.pending-text strong{color:#5c4300;}
+.pending-actions{display:flex; gap:8px; align-items:center;}
+.pending-bar .btn{padding:8px 14px; font-size:12.5px;}
+.pending-bar .btn.ghost{font-size:13px; padding:6px 8px; border-color:transparent; background:transparent;}
+.pending-bar[hidden], .modal-backdrop[hidden]{display:none !important;}
+
+@media (max-width:720px){
+  main{padding:16px 12px 0;}
+  .card{padding:14px 14px;}
+  header.top{padding:20px 16px;}
+}
+</style>
+</head>
+<body>
+<div class="hazard-band"></div>
+<header class="top">
+  <div class="top-inner">
+    <div>
+      <div class="tag">Segurança do Trabalho</div>
+      <h1>Relatório de Inspeção de Extintores</h1>
+      <p class="subtitle">Checklist de conformidade de equipamentos de combate a incêndio — Base 2026</p>
+    </div>
+    <div class="doc-code">RG 007</div>
+  </div>
+</header>
+
+<main>
+
+  <section class="card import-card">
+    <h2>Salvar na planilha (nuvem)</h2>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;">
+      <div style="flex:2 1 480px; min-width:260px;">
+        <label for="webappUrl" style="display:block; font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--steel); margin-bottom:6px;">URL do Web App (Google Apps Script)</label>
+        <input type="text" id="webappUrl" placeholder="https://script.google.com/macros/s/xxxx/exec" style="width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:4px; font-size:14px;">
+      </div>
+      <button class="btn primary" id="btnSaveSheet" type="button">☁ Salvar na planilha</button>
+      <button class="btn ghost" id="btnLoadSheet" type="button">↻ Recarregar da planilha</button>
+      <button class="btn ghost" id="btnClearSheetUrl" type="button">Limpar URL</button>
+    </div>
+    <div id="saveMsg" class="import-msg"></div>
+  </section>
+
+  <section class="card">
+    <h2>Dados da Inspeção</h2>
+    <div class="meta-grid">
+      <div class="field">
+        <label for="respNome">Responsável pela Inspeção</label>
+        <input type="text" id="respNome" placeholder="Nome completo">
+      </div>
+      <div class="field">
+        <label for="respSetor">Setor do Responsável</label>
+        <input type="text" id="respSetor" list="listaSetores" placeholder="Ex.: ADM, Manutenção...">
+        <datalist id="listaSetores"></datalist>
+      </div>
+      <div class="field">
+        <label for="respData">Data da Inspeção</label>
+        <input type="date" id="respData">
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Resumo da Inspeção</h2>
+    <div class="stats">
+      <div class="stat total"><div class="num" id="statTotal">0</div><div class="lbl">Total de Extintores</div></div>
+      <div class="stat c"><div class="num" id="statC">0</div><div class="lbl">Conformes (C)</div></div>
+      <div class="stat nc"><div class="num" id="statNC">0</div><div class="lbl">Não Conformes (N/C)</div></div>
+      <div class="stat na"><div class="num" id="statNA">0</div><div class="lbl">Não Aplicável (N/A)</div></div>
+      <div class="stat pend"><div class="num" id="statPend">0</div><div class="lbl">Itens Pendentes</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Filtros e Pesquisa</h2>
+    <div class="filters">
+      <div class="field search">
+        <label for="fSearch">Pesquisar</label>
+        <input type="text" id="fSearch" placeholder="ID, local, setor ou nº do cilindro...">
+      </div>
+      <div class="field">
+        <label for="fSetor">Setor</label>
+        <select id="fSetor"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label for="fTipo">Tipo</label>
+        <select id="fTipo"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label for="fStatus">Status do Checklist</label>
+        <select id="fStatus">
+          <option value="">Todos</option>
+          <option value="nc">Com algum Não Conforme</option>
+          <option value="pend">Com item pendente</option>
+          <option value="complete">Checklist completo</option>
+        </select>
+      </div>
+      <div class="checkbox-field">
+        <input type="checkbox" id="fVencido">
+        <label for="fVencido">Manutenção vencida</label>
+      </div>
+      <button class="btn ghost" id="btnClearFilters" type="button">Limpar filtros</button>
+    </div>
+    <div class="result-count" id="resultCount"></div>
+  </section>
+
+  <section class="card" style="padding:0; overflow:hidden;">
+    <div style="padding:20px 22px 10px;">
+      <h2 style="margin-bottom:4px;">Check List de Extintores</h2>
+      <p style="font-size:12.5px; color:var(--steel-light); margin:0 0 6px;">
+        Preencha cada item com <b>C</b> (Conforme), <b>N/C</b> (Não Conforme) ou <b>N/A</b> (Não Aplicável). Role a tabela horizontalmente para ver todas as colunas.
+      </p>
+    </div>
+    <div class="addbar">
+      <button class="addbtn" id="btnNewExtintor" type="button">+ Adicionar extintor</button>
+    </div>
+    <div class="table-wrap" id="tableWrap">
+      <table id="dataTable">
+        <thead>
+          <tr class="group-row">
+            <th colspan="9" class="group-base">Identificação do Extintor</th>
+            <th colspan="10" class="group-check">Check List de Extintores</th>
+            <th>Ações</th>
+          </tr>
+          <tr>
+            <th class="col-qtd">Quantidade</th>
+            <th class="col-id">Nº ID</th>
+            <th class="col-local">Local</th>
+            <th>Setor</th>
+            <th>Nº Cilindro</th>
+            <th>Tipo</th>
+            <th>Capacidade</th>
+            <th>Manut. 2º nível</th>
+            <th>Manut. 3º nível</th>
+            <th>Acesso</th>
+            <th>Placa de<br>sinalização</th>
+            <th>Sinalização<br>de piso</th>
+            <th>Lacre</th>
+            <th>Manômetro</th>
+            <th>Mangueira</th>
+            <th>Selo<br>INMETRO</th>
+            <th>Selo<br>GARANTIA</th>
+            <th>Pintura<br>Extintor</th>
+            <th>Gatilho</th>
+            <th class="col-obs">Observação</th>
+            <th class="col-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card export-card">
+    <h2>Exportar Relatório</h2>
+    <p style="font-size:12.5px; color:var(--steel-light); margin:0 0 14px;">
+      A exportação inclui todos os extintores, os dados da inspeção e o preenchimento atual do checklist (C / N/C / N/A) e observações.
+    </p>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      <button class="btn primary" id="btnExportPdf" type="button">⬇ Exportar arquivo em PDF</button>
+      <button class="btn primary" id="btnExportXlsx" type="button">⬇ Exportar arquivo em Excel</button>
+    </div>
+    <div id="saveMsg" class="import-msg"></div>
+  </section>
+
+</main>
+
+<footer style="text-align:center; padding:24px; font-size:11.5px; color:var(--steel-light);">
+  RG 007 — Relatório Inspeção de Extintores · Base 2026<br>
+  Desenvolvido por <a href="https://github.com/Jhonatan-Orlandi-de-Abrantes/" target="_blank" rel="noopener" style="color:#1976d2;">Jhonatan Orlandi de Abrantes</a> e por Tiago Pereira de Abrantes
+</footer>
+
+<!-- MODAL DE CONFIRMAÇÃO -->
+<div class="modal-backdrop" id="confirmModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-title" id="confirmTitle"></div>
+    <p class="modal-text" id="confirmText"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="confirmCancel">Cancelar</button>
+      <button type="button" class="btn primary" id="confirmOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- AVISO FIXO DE ALTERAÇÕES NÃO SALVAS -->
+<div class="pending-bar" id="pendingBar" hidden>
+  <div class="pending-text"><strong>Alterações não salvas.</strong> Você ainda não aplicou/salvou as alterações na planilha. Deseja salvar agora?</div>
+  <div class="pending-actions">
+    <button type="button" class="btn primary" id="pendingSave">Salvar agora</button>
+    <button type="button" class="btn ghost" id="pendingDismiss" title="Fechar aviso">✕</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DADOS BASE (extraídos do RG 007 - BASE 2026)
+   ============================================================ */
+const EXTINTORES = [{"id": 1, "quantidade": 1, "idExtintor": 1, "local": "GUARITA", "setor": "ADM", "numCilindro": 30015, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 2, "quantidade": 2, "idExtintor": 2, "local": "RH/DP/SESMT", "setor": "ADM", "numCilindro": 9116, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 3, "quantidade": 3, "idExtintor": 3, "local": "CORREDOR RH AO LADO DO ARMARIO DA FÁRMACIA", "setor": "ADM", "numCilindro": 11863, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 4, "quantidade": 4, "idExtintor": 4, "local": "CORREDOR RH 02", "setor": "ADM", "numCilindro": 40275, "tipo": "PÓ QUÍMICO", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 5, "quantidade": 5, "idExtintor": 5, "local": "ENTRADA VESTIRARIOS EXT.", "setor": "ADM", "numCilindro": 11894, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 6, "quantidade": 6, "idExtintor": 6, "local": "ENTRADA / RECEPÇÃO", "setor": "ADM", "numCilindro": 69266, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 7, "quantidade": 7, "idExtintor": 7, "local": "SALA DE VIDRO FRENTE A RECEPÇÃO", "setor": "ADM", "numCilindro": 8965, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 8, "quantidade": 8, "idExtintor": 8, "local": "MARKETING", "setor": "ADM", "numCilindro": 10790, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 9, "quantidade": 9, "idExtintor": 9, "local": "COPA MARKETING", "setor": "ADM", "numCilindro": 10934, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 10, "quantidade": 10, "idExtintor": 10, "local": "FRANQUINA /COMERCIAL", "setor": "ADM", "numCilindro": 75830, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 11, "quantidade": 11, "idExtintor": 11, "local": "CORREDOR BEBEDOUROS 01", "setor": "ADM", "numCilindro": 68434, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 12, "quantidade": 12, "idExtintor": 12, "local": "AO LADO DA ENTRADA COMERCIAL", "setor": "ADM", "numCilindro": 10860, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 13, "quantidade": 13, "idExtintor": 13, "local": "CORREDOR BEBEDOUROS 03", "setor": "ADM", "numCilindro": 10918, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 14, "quantidade": 14, "idExtintor": 14, "local": "DIRETORIA", "setor": "ADM", "numCilindro": 10774, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 15, "quantidade": 15, "idExtintor": 15, "local": "FRENTE SALA ATENDIMENTO (01,02 E 03)", "setor": "ADM", "numCilindro": 10973, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 16, "quantidade": 16, "idExtintor": 16, "local": "ACESSO AO TI", "setor": "ADM", "numCilindro": 97059, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 17, "quantidade": 17, "idExtintor": 17, "local": "CUSTOS", "setor": "ADM", "numCilindro": 75857, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 18, "quantidade": 18, "idExtintor": 18, "local": "FINANCEIRO PONTO 01", "setor": "ADM", "numCilindro": 75373, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 19, "quantidade": 19, "idExtintor": 19, "local": "FINANCEIRO PONTO 02", "setor": "ADM", "numCilindro": 10889, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 20, "quantidade": 20, "idExtintor": 20, "local": "CONTABIL", "setor": "ADM", "numCilindro": 80752, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 21, "quantidade": 21, "idExtintor": 21, "local": "CORREDOR NA FRENTE BANHEIRO", "setor": "ADM", "numCilindro": 84320, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 22, "quantidade": 22, "idExtintor": 22, "local": "CORREDOR T.I", "setor": "ADM", "numCilindro": 68453, "tipo": "PÓ QUÍMICO", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 23, "quantidade": 23, "idExtintor": 23, "local": "SALA T.I", "setor": "ADM", "numCilindro": 84402, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 24, "quantidade": 24, "idExtintor": 24, "local": "CORREDOR ENTRADA PCP", "setor": "ADM", "numCilindro": 2502, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 25, "quantidade": 25, "idExtintor": 25, "local": "T.I SALA DO SERVIDOR", "setor": "ADM", "numCilindro": 2098, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 26, "quantidade": 26, "idExtintor": 26, "local": "PCP 02", "setor": "ADM", "numCilindro": 2259, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 27, "quantidade": 27, "idExtintor": 27, "local": "CORREDOR SALA BAND", "setor": "ADM", "numCilindro": 81028, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 28, "quantidade": 28, "idExtintor": 28, "local": "CORREDOR SALA BAND, BANHEIROS", "setor": "ADM", "numCilindro": 10782, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 29, "quantidade": 29, "idExtintor": 29, "local": "CORREDOR ACESSO AOS ESTUDIOS", "setor": "ADM", "numCilindro": 81202, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 30, "quantidade": 30, "idExtintor": 30, "local": "FRENTE SALA ACESSORIOS", "setor": "ADM", "numCilindro": 10848, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 31, "quantidade": 31, "idExtintor": 31, "local": "STUDIO 01 PONTO 02", "setor": "ADM", "numCilindro": 68575, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 32, "quantidade": 32, "idExtintor": 32, "local": "BACKSTAGE / DESFILE", "setor": "ADM", "numCilindro": 19586, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 33, "quantidade": 33, "idExtintor": 33, "local": "DESFILE ACESSORIOS 01", "setor": "ADM", "numCilindro": 68040, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 34, "quantidade": 34, "idExtintor": 34, "local": "DESFILE ACESSORIOS  02", "setor": "ADM", "numCilindro": 10758, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 35, "quantidade": 35, "idExtintor": 35, "local": "DESFILE ACESSORIOS  03", "setor": "ADM", "numCilindro": 35313, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 36, "quantidade": 36, "idExtintor": 36, "local": "DESFILE ACESSORIOS  04 PRÓXIMO A PORTA (SAÍDA)", "setor": "ADM", "numCilindro": 10833, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 37, "quantidade": 37, "idExtintor": 37, "local": "STUDIO 01 PONTO 01", "setor": "ADM", "numCilindro": 35013, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 38, "quantidade": 38, "idExtintor": 38, "local": "STUDIO 02", "setor": "ADM", "numCilindro": 68636, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 39, "quantidade": 39, "idExtintor": 39, "local": "CORREDOR LICENCIADOS", "setor": "ADM", "numCilindro": 10823, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 40, "quantidade": 40, "idExtintor": 40, "local": "CORREDOR EM FRENTE A SALA LICENCIADOS", "setor": "ADM", "numCilindro": 4540, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 41, "quantidade": 41, "idExtintor": 41, "local": "CORREDOR BANHEIROS DESENHO TECNICO", "setor": "ADM", "numCilindro": 5165, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 42, "quantidade": 42, "idExtintor": 42, "local": "CORREDOR PORTA DESENHO", "setor": "ADM", "numCilindro": 3698, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 43, "quantidade": 43, "idExtintor": 43, "local": "DESENHO TECNICO", "setor": "ADM", "numCilindro": 68778, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 44, "quantidade": 44, "idExtintor": 44, "local": "ESTAMPARIA COLCCI ATRÁS DA PORTA", "setor": "ADM", "numCilindro": 10800, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 45, "quantidade": 45, "idExtintor": 45, "local": "PORTA ESTAMPARIA COLCCI", "setor": "ADM", "numCilindro": 31114, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 46, "quantidade": 46, "idExtintor": 46, "local": "PORTA DESENVOLVIMENTO", "setor": "ADM", "numCilindro": 10773, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 47, "quantidade": 47, "idExtintor": 47, "local": "DESENVOLVIMENTO DO LADO DAS LIXEIRAS", "setor": "ADM", "numCilindro": 10922, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 48, "quantidade": 48, "idExtintor": 48, "local": "ESTILO COLCCI", "setor": "ADM", "numCilindro": 11212, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 49, "quantidade": 49, "idExtintor": 49, "local": "CORREDOR ESTILO COLCCI PERTO DA PORTA DE SAÍDA DE EMERGÊNCIA", "setor": "ADM", "numCilindro": 8539, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 50, "quantidade": 50, "idExtintor": 50, "local": "CORREDOR SAIDA DE EMERGENCIA FORUM", "setor": "ADM", "numCilindro": 40776, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 51, "quantidade": 51, "idExtintor": 51, "local": "ENGENHARIA 01", "setor": "ADM", "numCilindro": 61361, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 52, "quantidade": 52, "idExtintor": 52, "local": "ENGENHARIA 02", "setor": "ADM", "numCilindro": 68935, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 53, "quantidade": 53, "idExtintor": 53, "local": "ENGENHARIA 03", "setor": "ADM", "numCilindro": 83882, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 54, "quantidade": 54, "idExtintor": 54, "local": "MODELAGEM 01", "setor": "ADM", "numCilindro": 68268, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 55, "quantidade": 55, "idExtintor": 55, "local": "MODELAGEM 02", "setor": "ADM", "numCilindro": 598, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 56, "quantidade": 56, "idExtintor": 56, "local": "CORREDORES PROVADORES", "setor": "ADM", "numCilindro": 10952, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 57, "quantidade": 57, "idExtintor": 57, "local": "CORREDOR ENTRADA MODELAGEM", "setor": "ADM", "numCilindro": 10818, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 58, "quantidade": 58, "idExtintor": 58, "local": "AMBULATÓRIO", "setor": "ADM", "numCilindro": 1503, "tipo": "PÓ QUÍMICO", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 59, "quantidade": 59, "idExtintor": 947, "local": "AMBULATÓRIO /SALA DE ARQUIVOS", "setor": "ADM", "numCilindro": 955, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/08/2027", "manut3": "01/08/2029"}, {"id": 60, "quantidade": 60, "idExtintor": 60, "local": "PARTE EXTERNA REFÉITORIO 01", "setor": "ADM", "numCilindro": 10977, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 61, "quantidade": 61, "idExtintor": 61, "local": "PARTE EXTERNA REFÉITORIO 02", "setor": "ADM", "numCilindro": 34133, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 62, "quantidade": 62, "idExtintor": 62, "local": "REFEITÓRIO PONTO 01", "setor": "ADM", "numCilindro": 8310, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 63, "quantidade": 63, "idExtintor": 63, "local": "REFEITÓRIO PONTO 02", "setor": "ADM", "numCilindro": 8763, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 64, "quantidade": 64, "idExtintor": 64, "local": "REFEITÓRIO PONTO 03", "setor": "ADM", "numCilindro": 69185, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 65, "quantidade": 65, "idExtintor": 65, "local": "REFEITÓRIO PONTO 04", "setor": "ADM", "numCilindro": 8771, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 66, "quantidade": 66, "idExtintor": 66, "local": "REFEITÓRIO PONTO 05", "setor": "ADM", "numCilindro": 4333, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 67, "quantidade": 67, "idExtintor": 67, "local": "REFEITÓRIO PONTO 06", "setor": "ADM", "numCilindro": 69186, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 68, "quantidade": 68, "idExtintor": 68, "local": "COZINHA ENTRADA", "setor": "ADM", "numCilindro": 11823, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 69, "quantidade": 69, "idExtintor": 69, "local": "COZINHA ENTRADA DISPENSA 01", "setor": "ADM", "numCilindro": 18258, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 70, "quantidade": 70, "idExtintor": 70, "local": "COZINHA ENTRADA DISPENSA 02", "setor": "ADM", "numCilindro": 68370, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 71, "quantidade": 71, "idExtintor": 71, "local": "PILOTAGEM MAQ CORTE LASER", "setor": "PILOTAGEM", "numCilindro": 68217, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 72, "quantidade": 72, "idExtintor": 72, "local": "PILOTAGEM PONTO 01", "setor": "PILOTAGEM", "numCilindro": 68353, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 73, "quantidade": 73, "idExtintor": 73, "local": "PILOTAGEM PONTO 02 (QUADRO DE ENERGIA)", "setor": "PILOTAGEM", "numCilindro": 38236, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 74, "quantidade": 74, "idExtintor": 74, "local": "PILOTAGEM PONTO 03", "setor": "PILOTAGEM", "numCilindro": 10912, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 75, "quantidade": 75, "idExtintor": 75, "local": "PILOTAGEM PONTO 04", "setor": "PILOTAGEM", "numCilindro": 69074, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 76, "quantidade": 76, "idExtintor": 76, "local": "PILOTAGEM PONTO 05 (LINHAS)", "setor": "PILOTAGEM", "numCilindro": 69014, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 77, "quantidade": 77, "idExtintor": 77, "local": "CORREDOR \"A\" FÁBRICA - 01 - H41", "setor": "CORTE", "numCilindro": 53088, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 78, "quantidade": 78, "idExtintor": 78, "local": "CORREDOR \"A\" FÁBRICA - 02", "setor": "CORTE", "numCilindro": 69148, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 79, "quantidade": 79, "idExtintor": 79, "local": "CORREDOR \"A\" FÁBRICA - 03", "setor": "CORTE", "numCilindro": 11049, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 80, "quantidade": 80, "idExtintor": 80, "local": "CORREDOR \"A\" FÁBRICA - 04", "setor": "CORTE", "numCilindro": 10765, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 81, "quantidade": 81, "idExtintor": 81, "local": "CORREDOR \"A\" FÁBRICA - 05", "setor": "CORTE", "numCilindro": 11254, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 82, "quantidade": 82, "idExtintor": 82, "local": "CORREDOR \"A\" FÁBRICA - 06", "setor": "CORTE", "numCilindro": 10748, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 83, "quantidade": 83, "idExtintor": 83, "local": "CORREDOR \"A\" FÁBRICA - 07", "setor": "CORTE", "numCilindro": 11153, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 84, "quantidade": 84, "idExtintor": 84, "local": "CORREDOR \"A\" FÁBRICA - 08", "setor": "CORTE", "numCilindro": 11082, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 85, "quantidade": 85, "idExtintor": 85, "local": "CORREDOR \"A\" FÁBRICA - 09", "setor": "CORTE", "numCilindro": 10821, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 86, "quantidade": 86, "idExtintor": 86, "local": "CORREDOR \"A\" FÁBRICA - 10", "setor": "CORTE", "numCilindro": 10910, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 87, "quantidade": 87, "idExtintor": 87, "local": "CORREDOR \"A\" FÁBRICA - 11", "setor": "CORTE", "numCilindro": 11075, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 88, "quantidade": 88, "idExtintor": 88, "local": "CORREDOR \"A\" FÁBRICA - 12", "setor": "CORTE", "numCilindro": 68352, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 89, "quantidade": 89, "idExtintor": 89, "local": "CORREDOR \"A\" FÁBRICA - 13", "setor": "CORTE", "numCilindro": 68651, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 90, "quantidade": 90, "idExtintor": 90, "local": "CD - ENTRADA CD", "setor": "CD", "numCilindro": 10785, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 91, "quantidade": 91, "idExtintor": 91, "local": "CONTAGEM - CD 01", "setor": "CD", "numCilindro": 68723, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 92, "quantidade": 92, "idExtintor": 92, "local": "CONTAGEM - CD 02", "setor": "CD", "numCilindro": 68670, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 93, "quantidade": 93, "idExtintor": 93, "local": "CONTAGEM - CD 03", "setor": "CD", "numCilindro": 66224, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 94, "quantidade": 94, "idExtintor": 94, "local": "CD PARTE CENTRAL", "setor": "CORTE", "numCilindro": 10872, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 95, "quantidade": 95, "idExtintor": 95, "local": "SAÍDA DE EMERGENCIA - CD", "setor": "CORTE", "numCilindro": 8379, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 96, "quantidade": 96, "idExtintor": 96, "local": "CD FUNDOS 01", "setor": "CORTE", "numCilindro": 10863, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 97, "quantidade": 97, "idExtintor": 97, "local": "CD FUNDOS 02", "setor": "CORTE", "numCilindro": 68396, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 98, "quantidade": 98, "idExtintor": 98, "local": "QUADRO ESTAMPARIA", "setor": "CORTE", "numCilindro": 69051, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 99, "quantidade": 99, "idExtintor": 99, "local": "MAQUINAS DE CORTE - FUNDOS - 01", "setor": "CORTE", "numCilindro": 64522, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 100, "quantidade": 100, "idExtintor": 100, "local": "MAQUINAS DE CORTE - FUNDOS - 02", "setor": "CORTE", "numCilindro": 11808, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 101, "quantidade": 101, "idExtintor": 101, "local": "QUALIDADE MEIO - MESAS - 01", "setor": "CORTE", "numCilindro": 69175, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 102, "quantidade": 102, "idExtintor": 102, "local": "CORTE MEIO - MESAS - 02", "setor": "CORTE", "numCilindro": 65515, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 103, "quantidade": 103, "idExtintor": 103, "local": "MAQUINA DE CORTER -CORREDOR DO MEIO 1", "setor": "CORTE", "numCilindro": 68982, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 104, "quantidade": 104, "idExtintor": 104, "local": "MAQUINA DE CORTER -CORREDOR DO MEIO 2", "setor": "CORTE", "numCilindro": 10835, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 105, "quantidade": 105, "idExtintor": 105, "local": "MAQUINA DE CORTER -CORREDOR DO MEIO 3", "setor": "CORTE", "numCilindro": 10791, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 106, "quantidade": 106, "idExtintor": 106, "local": "CORTE MEIO 01", "setor": "CORTE", "numCilindro": 66297, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 107, "quantidade": 107, "idExtintor": 107, "local": "CORTE MEIO 02", "setor": "CORTE", "numCilindro": 70109, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 108, "quantidade": 108, "idExtintor": 108, "local": "CORTE MEIO 03", "setor": "CORTE", "numCilindro": 69146, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 109, "quantidade": 109, "idExtintor": 109, "local": "CORTE MEIO 04", "setor": "CORTE", "numCilindro": 10769, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 110, "quantidade": 110, "idExtintor": 110, "local": "CORTE MEIO 05", "setor": "CORTE", "numCilindro": 11245, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 111, "quantidade": 111, "idExtintor": 111, "local": "CORTE MEIO 06", "setor": "CORTE", "numCilindro": 68973, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 112, "quantidade": 112, "idExtintor": 112, "local": "CORREDOR CORTE - 01 - H04", "setor": "CORTE", "numCilindro": 68223, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 113, "quantidade": 113, "idExtintor": 113, "local": "CORREDOR CORTE - 02", "setor": "CORTE", "numCilindro": 10924, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 114, "quantidade": 114, "idExtintor": 114, "local": "CORREDOR CORTE - 03", "setor": "CORTE", "numCilindro": 34945, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 115, "quantidade": 115, "idExtintor": 115, "local": "CORREDOR CORTE - 04", "setor": "CORTE", "numCilindro": 69100, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 116, "quantidade": 116, "idExtintor": 116, "local": "CD", "setor": "CD", "numCilindro": 69199, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 117, "quantidade": 117, "idExtintor": 117, "local": "CORREDOR CORTE - 07", "setor": "CORTE", "numCilindro": 66306, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 118, "quantidade": 118, "idExtintor": 118, "local": "CORREDOR CORTE - 08", "setor": "CORTE", "numCilindro": 68278, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 119, "quantidade": 119, "idExtintor": 119, "local": "CORREDOR CORTE - 09", "setor": "CORTE", "numCilindro": 10895, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 120, "quantidade": 120, "idExtintor": 120, "local": "CORREDOR CORTE - 10", "setor": "CORTE", "numCilindro": 68310, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 121, "quantidade": 121, "idExtintor": 121, "local": "CORREDOR \"C\" FÁBRICA - 11 - H06", "setor": "CORTE", "numCilindro": 5526, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 122, "quantidade": 122, "idExtintor": 122, "local": "CORREDOR \"C\" FÁBRICA - 12", "setor": "CORTE", "numCilindro": 68987, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 123, "quantidade": 123, "idExtintor": 123, "local": "CORREDOR \"C\" FÁBRICA - 13 - H07", "setor": "CORTE", "numCilindro": 10838, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 124, "quantidade": 124, "idExtintor": 124, "local": "CORREDOR \"C\" FÁBRICA - 14", "setor": "CORTE", "numCilindro": 10801, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 125, "quantidade": 125, "idExtintor": 125, "local": "CORREDOR \"C\" FÁBRICA - 15", "setor": "CORTE", "numCilindro": 62024, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 126, "quantidade": 126, "idExtintor": 126, "local": "CORREDOR \"C\" FÁBRICA - 16", "setor": "CORTE", "numCilindro": 10914, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 127, "quantidade": 127, "idExtintor": 127, "local": "CORREDOR \"C\" FÁBRICA - 17", "setor": "CORTE", "numCilindro": 66115, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 128, "quantidade": 128, "idExtintor": 128, "local": "CD FUNDOS", "setor": "CD", "numCilindro": 64852, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 129, "quantidade": 129, "idExtintor": 129, "local": "CD FUNDOS 2", "setor": "CD", "numCilindro": 10756, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 130, "quantidade": 130, "idExtintor": 130, "local": "FACITIES", "setor": "FACILITIES", "numCilindro": 25492, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 131, "quantidade": 131, "idExtintor": 131, "local": "LABORATORIO DE QUALIDADE", "setor": "LABORATORIO", "numCilindro": 8842, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 132, "quantidade": 132, "idExtintor": 132, "local": "LABORATORIO DIGITAL", "setor": "LABORATORIO", "numCilindro": 69140, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 133, "quantidade": 133, "idExtintor": 133, "local": "LABORATORIO DIGITAL 2", "setor": "LABORATORIO", "numCilindro": 9705, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 134, "quantidade": 134, "idExtintor": 134, "local": "CASA DE BOMBAS", "setor": "CORTE", "numCilindro": 64552, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 135, "quantidade": 135, "idExtintor": 135, "local": "MANUTENÇÃO DE MÁQUINAS", "setor": "MANUTENÇÃO", "numCilindro": 69192, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 136, "quantidade": 136, "idExtintor": 136, "local": "CASA DE ALTA TENSÃO - 1", "setor": "ALTA TENSÃO", "numCilindro": 11205, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 137, "quantidade": 137, "idExtintor": 137, "local": "CASA DE ALTA TENSÃO - 1", "setor": "ALTA TENSÃO", "numCilindro": 84422, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 138, "quantidade": 138, "idExtintor": 138, "local": "CASA DE ALTA TENSÃO 2", "setor": "ALTA TENSÃO", "numCilindro": 23358, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 139, "quantidade": 139, "idExtintor": 139, "local": "CASA DE ALTA TENSÃO 2", "setor": "ALTA TENSÃO", "numCilindro": 53595, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 140, "quantidade": 140, "idExtintor": 140, "local": "MESAS ADM. ALMOXARIFADO", "setor": "ALMOXARIFADO", "numCilindro": 68214, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 141, "quantidade": 141, "idExtintor": 141, "local": "DOCA ALMOXARIFADO H21", "setor": "ALMOXARIFADO", "numCilindro": 10793, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 142, "quantidade": 142, "idExtintor": 142, "local": "DOCA ALMOXARIFADO SL MAT. LIMP.", "setor": "ALMOXARIFADO", "numCilindro": 63902, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 143, "quantidade": 143, "idExtintor": 143, "local": "BANHEIRO MASC. ALMOXARIFADO", "setor": "ALMOXARIFADO", "numCilindro": 68218, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 144, "quantidade": 144, "idExtintor": 144, "local": "ALMOXARIFADO CORREDOR C-1", "setor": "ALMOXARIFADO", "numCilindro": 5618, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 145, "quantidade": 145, "idExtintor": 145, "local": "ALMOXARIFADO CORREDOR C-2 H28", "setor": "ALMOXARIFADO", "numCilindro": 13334, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 146, "quantidade": 146, "idExtintor": 146, "local": "ALMOXARIFADO CORREDOR C-3", "setor": "ALMOXARIFADO", "numCilindro": 17038, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 147, "quantidade": 147, "idExtintor": 147, "local": "ALMOXARIFADO CORREDOR C-4", "setor": "ALMOXARIFADO", "numCilindro": 40509, "tipo": "PÓ QUÍMICO", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 148, "quantidade": 148, "idExtintor": 148, "local": "ALMOXARIFADO CORREDOR C-5", "setor": "ALMOXARIFADO", "numCilindro": 20324, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 149, "quantidade": 149, "idExtintor": 149, "local": "ALMOXARIFADO CORREDOR C-6", "setor": "ALMOXARIFADO", "numCilindro": 68615, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 150, "quantidade": 150, "idExtintor": 150, "local": "ALMOXARIFADO CORREDOR C-7 H27", "setor": "ALMOXARIFADO", "numCilindro": 10795, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 151, "quantidade": 151, "idExtintor": 151, "local": "ALMOXARIFADO CORREDOR C-8", "setor": "ALMOXARIFADO", "numCilindro": 3371, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 152, "quantidade": 152, "idExtintor": 152, "local": "ALMOXARIFADO CORREDOR C-9", "setor": "ALMOXARIFADO", "numCilindro": 10972, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 153, "quantidade": 153, "idExtintor": 153, "local": "QUALIDADE CORREDOR C-10", "setor": "QUALIDADE", "numCilindro": 68840, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 154, "quantidade": 154, "idExtintor": 154, "local": "QUALIDADE CORREDOR C-11", "setor": "QUALIDADE", "numCilindro": 68424, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 155, "quantidade": 155, "idExtintor": 155, "local": "QUALIDADE CORREDOR C-12", "setor": "QUALIDADE", "numCilindro": 92339, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 156, "quantidade": 156, "idExtintor": 156, "local": "QUALIDADE CORREDOR C-13", "setor": "QUALIDADE", "numCilindro": 68580, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 157, "quantidade": 157, "idExtintor": 157, "local": "QUALIDADE CORREDOR C-14", "setor": "QUALIDADE", "numCilindro": 26997, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 158, "quantidade": 158, "idExtintor": 158, "local": "QUALIDADE CORREDOR C-15", "setor": "QUALIDADE", "numCilindro": 65629, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 159, "quantidade": 159, "idExtintor": 159, "local": "QUALIDADE CORREDOR C-16", "setor": "QUALIDADE", "numCilindro": 68299, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 160, "quantidade": 160, "idExtintor": 160, "local": "QUALIDADE FUNDOS E1", "setor": "QUALIDADE", "numCilindro": 10849, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 161, "quantidade": 161, "idExtintor": 161, "local": "QUALIDADE FUNDOS E2", "setor": "QUALIDADE", "numCilindro": 30928, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 162, "quantidade": 162, "idExtintor": 162, "local": "QUALIDADE FUNDOS E3", "setor": "QUALIDADE", "numCilindro": 68306, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 163, "quantidade": 163, "idExtintor": 163, "local": "QUALIDADE FUNDOS E4", "setor": "QUALIDADE", "numCilindro": 36620, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 164, "quantidade": 164, "idExtintor": 164, "local": "ALMOXARIFADO CORREDOR A-1", "setor": "ALMOXARIFADO", "numCilindro": 68916, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 165, "quantidade": 165, "idExtintor": 165, "local": "ALMOXARIFADO CORREDOR A-2", "setor": "ALMOXARIFADO", "numCilindro": 40498, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 166, "quantidade": 166, "idExtintor": 166, "local": "ALMOXARIFADO CORREDOR A-3", "setor": "ALMOXARIFADO", "numCilindro": 61163, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 167, "quantidade": 167, "idExtintor": 167, "local": "QUALIDADE CORREDOR A-7", "setor": "QUALIDADE", "numCilindro": 10891, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 168, "quantidade": 168, "idExtintor": 168, "local": "QUALIDADE CORREDOR A-11", "setor": "QUALIDADE", "numCilindro": 68660, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 169, "quantidade": 169, "idExtintor": 169, "local": "QUALIDADE CORREDOR A-12", "setor": "QUALIDADE", "numCilindro": 3633, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 170, "quantidade": 170, "idExtintor": 170, "local": "ALMOXARIFADO CORREDOR B-3", "setor": "ALMOXARIFADO", "numCilindro": 5713, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 171, "quantidade": 171, "idExtintor": 171, "local": "ALMOXARIFADO CORREDOR B-4", "setor": "ALMOXARIFADO", "numCilindro": 63764, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 172, "quantidade": 172, "idExtintor": 172, "local": "ALMOXARIFADO CORREDOR B-5", "setor": "ALMOXARIFADO", "numCilindro": 64330, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 173, "quantidade": 173, "idExtintor": 173, "local": "ALMOXARIFADO CORREDOR B-6", "setor": "ALMOXARIFADO", "numCilindro": 69172, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 174, "quantidade": 174, "idExtintor": 174, "local": "ALMOXARIFADO CORREDOR B-7", "setor": "ALMOXARIFADO", "numCilindro": 68588, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 175, "quantidade": 175, "idExtintor": 175, "local": "ALMOXARIFADO CORREDOR B-8", "setor": "ALMOXARIFADO", "numCilindro": 11188, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 176, "quantidade": 176, "idExtintor": 176, "local": "ALMOXARIFADO CORREDOR B-9", "setor": "ALMOXARIFADO", "numCilindro": 40371, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 177, "quantidade": 177, "idExtintor": 177, "local": "CORREDOR - ALMOXARIFADO - AVIAMENTO - 01", "setor": "ALMOXARIFADO", "numCilindro": 65732, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 178, "quantidade": 178, "idExtintor": 178, "local": "CORREDOR - ALMOXARIFADO - AVIAMENTO - 01", "setor": "ALMOXARIFADO", "numCilindro": 1514, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 179, "quantidade": 179, "idExtintor": 179, "local": "CORREDOR - ALMOXARIFADO - AVIAMENTO - 01", "setor": "ALMOXARIFADO", "numCilindro": 69087, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 180, "quantidade": 180, "idExtintor": 180, "local": "CORREDOR - ALMOXARIFADO - AVIAMENTO - 01", "setor": "ALMOXARIFADO", "numCilindro": 68269, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 181, "quantidade": 181, "idExtintor": 181, "local": "CORREDOR - ALMOXARIFADO - AVIAMENTO - 01", "setor": "ALMOXARIFADO", "numCilindro": 19588, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 182, "quantidade": 182, "idExtintor": 182, "local": "CORREDOR - ALMOXARIFADO - AVIAMENTO - 01", "setor": "ALMOXARIFADO", "numCilindro": 63568, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 183, "quantidade": 183, "idExtintor": 183, "local": "CASA DE ALTA TENSÃO - ESTACIONAMENTO", "setor": "ESTACIONAMENTO", "numCilindro": 28161, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 184, "quantidade": 184, "idExtintor": 184, "local": "CASA DE ALTA TENSÃO - ESTACIONAMENTO", "setor": "ESTACIONAMENTO", "numCilindro": 23, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 185, "quantidade": 185, "idExtintor": 185, "local": "CENTRAL DE GÁS - ESTACIONAMENTO 01", "setor": "ESTACIONAMENTO", "numCilindro": 20347, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 186, "quantidade": 186, "idExtintor": 186, "local": "CENTRAL DE GÁS - ESTACIONAMENTO 01", "setor": "ESTACIONAMENTO", "numCilindro": 28164, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 187, "quantidade": 187, "idExtintor": 187, "local": "BICICLETÁRIO 01", "setor": "ESTACIONAMENTO", "numCilindro": 10825, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 188, "quantidade": 188, "idExtintor": 188, "local": "BICICLETÁRIO 01", "setor": "ESTACIONAMENTO", "numCilindro": 68594, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 189, "quantidade": 189, "idExtintor": 189, "local": "ALMOXARIFADO CORREDOR B-1", "setor": "ALMOXARIFADO", "numCilindro": 10797, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 190, "quantidade": 190, "idExtintor": 190, "local": "ALMOXARIFADO CORREDOR B-2", "setor": "ALMOXARIFADO", "numCilindro": 79815, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 191, "quantidade": 191, "idExtintor": 191, "local": "ALMOXARIFADO CORREDOR B-3- LADO A", "setor": "ALMOXARIFADO", "numCilindro": 83889, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 192, "quantidade": 192, "idExtintor": 192, "local": "ALMOXARIFADO CORREDOR B-3- LADO B", "setor": "ALMOXARIFADO", "numCilindro": 70797, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 193, "quantidade": 193, "idExtintor": 193, "local": "ALMOXARIFADO CORREDOR B-3", "setor": "ALMOXARIFADO", "numCilindro": 40478, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 194, "quantidade": 194, "idExtintor": 194, "local": "ALMOXARIFADO CORREDOR B-4", "setor": "ALMOXARIFADO", "numCilindro": 10804, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 195, "quantidade": 195, "idExtintor": 195, "local": "QUALIDADE FUNDOS E4 B", "setor": "QUALIDADE", "numCilindro": 18789, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 196, "quantidade": 196, "idExtintor": 196, "local": "ARMAZENAMENTO LOTES DA QUALIDADE-1", "setor": "QUALIDADE", "numCilindro": 10867, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 197, "quantidade": 197, "idExtintor": 197, "local": "ARMAZENAMENTO LOTES DA QUALIDADE-2", "setor": "QUALIDADE", "numCilindro": 68252, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 198, "quantidade": 198, "idExtintor": 217, "local": "1° ANDAR CONTROLADORIA", "setor": "PREDIO ESPELHADO", "numCilindro": 10890, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 199, "quantidade": 199, "idExtintor": 218, "local": "DEVOLUÇÃO DA QUALIDADE, 1°", "setor": "QUALIDADE", "numCilindro": 69091, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 200, "quantidade": 200, "idExtintor": 219, "local": "DEVOLUÇÃO DA QUALIDADE, 2°", "setor": "QUALIDADE", "numCilindro": 68284, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 201, "quantidade": 201, "idExtintor": 220, "local": "DEVOLUÇÃO DA QUALIDADE, 3°", "setor": "QUALIDADE", "numCilindro": 42862, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 202, "quantidade": 202, "idExtintor": 221, "local": "1° ANDAR E-COMMERCE", "setor": "PREDIO ESPELHADO", "numCilindro": 10865, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 203, "quantidade": 203, "idExtintor": 340, "local": "1° ANDAR SAÍDA DE EMERGENCIA - JURÍDICO", "setor": "PREDIO ESPELHADO", "numCilindro": 11064, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 204, "quantidade": 204, "idExtintor": 222, "local": "2° ANDAR SALA DE CONVEÇÕES FRENTE AO ELEVADOR", "setor": "PREDIO ESPELHADO", "numCilindro": 11086, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 205, "quantidade": 205, "idExtintor": 223, "local": "2° ANDAR SALA DE CONVENÇÕES", "setor": "PREDIO ESPELHADO", "numCilindro": 69180, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 206, "quantidade": 206, "idExtintor": 224, "local": "2° ANDAR BACKSTAGE", "setor": "PREDIO ESPELHADO", "numCilindro": 68646, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 207, "quantidade": 207, "idExtintor": 225, "local": "2° ANDAR BACKSTAGE", "setor": "PREDIO ESPELHADO", "numCilindro": 10796, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 208, "quantidade": 208, "idExtintor": 226, "local": "FEDEX- SALA ADM", "setor": "LOGISTICA B7", "numCilindro": 18190, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 209, "quantidade": 209, "idExtintor": 227, "local": "CORREDOR CENTRAL 1° ANDAR RUA:34", "setor": "LOGISTICA B7", "numCilindro": 68382, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 210, "quantidade": 210, "idExtintor": 228, "local": "CORREDOR CENTRAL 1° ANDAR RUA:44 / COLCCI JEANS-11", "setor": "LOGISTICA B7", "numCilindro": 10967, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 211, "quantidade": 211, "idExtintor": 229, "local": "CORREDOR CENTRAL 1° ANDAR RUA:36-48 COLCCI-01", "setor": "LOGISTICA B7", "numCilindro": 24838, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 212, "quantidade": 212, "idExtintor": 230, "local": "CORREDOR CENTRAL 1° ANDAR RUA:40 COLCCI-01", "setor": "LOGISTICA B7", "numCilindro": 11103, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 213, "quantidade": 213, "idExtintor": 231, "local": "CORREDOR CENTRAL 1° ANDAR RUA:35 COLLCI-01/1°", "setor": "LOGISTICA B7", "numCilindro": 10754, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 214, "quantidade": 214, "idExtintor": 232, "local": "CORREDOR CENTRAL 1° ANDAR RUA:35 COLLCI-01/2°", "setor": "LOGISTICA B7", "numCilindro": 10933, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 215, "quantidade": 215, "idExtintor": 233, "local": "CORREDOR CENTRAL 1° ANDAR RUA:34 COLLCI-01/1°", "setor": "LOGISTICA B7", "numCilindro": 20260, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 216, "quantidade": 216, "idExtintor": 234, "local": "CORREDOR CENTRAL 1° ANDAR RUA:34 COLLCI-01/2°", "setor": "LOGISTICA B7", "numCilindro": 10923, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 217, "quantidade": 217, "idExtintor": 235, "local": "CORREDOR CENTRAL 1° ANDAR RUA:25 COLLCI-01", "setor": "LOGISTICA B7", "numCilindro": 30864, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 218, "quantidade": 218, "idExtintor": 236, "local": "CORREDOR CENTRAL 1° ANDAR RUA:002 COLLCI-01", "setor": "LOGISTICA B7", "numCilindro": 10847, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 219, "quantidade": 219, "idExtintor": 237, "local": "CORREDOR CENTRAL 1° ANDAR RUA:001 COLLCI-01", "setor": "LOGISTICA B7", "numCilindro": 10929, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 220, "quantidade": 220, "idExtintor": 238, "local": "CORREDOR CENTRAL 2° ANDAR RUA:44", "setor": "LOGISTICA B7", "numCilindro": 69080, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 221, "quantidade": 221, "idExtintor": 239, "local": "CORREDOR CENTRAL 2° ANDAR RUA:31", "setor": "LOGISTICA B7", "numCilindro": 66939, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 222, "quantidade": 222, "idExtintor": 240, "local": "CORREDOR CENTRAL 2° ANDAR RUA:36 FORUM-46", "setor": "LOGISTICA B7", "numCilindro": 10969, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 223, "quantidade": 223, "idExtintor": 242, "local": "CORREDOR CENTRAL 2° ANDAR RUA:01 FORUM-46", "setor": "LOGISTICA B7", "numCilindro": 10803, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 224, "quantidade": 224, "idExtintor": 243, "local": "CORREDOR CENTRAL 2° ANDAR RUA:34 SOMMER-31", "setor": "LOGISTICA B7", "numCilindro": 10764, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 225, "quantidade": 225, "idExtintor": 244, "local": "CORREDOR CENTRAL 2° ANDAR RUA:34 SOMMER-31", "setor": "LOGISTICA B7", "numCilindro": 51159, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 226, "quantidade": 226, "idExtintor": 245, "local": "CORREDOR CENTRAL 2° ANDAR RUA:44 TRITON-14", "setor": "LOGISTICA B7", "numCilindro": 10771, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 227, "quantidade": 227, "idExtintor": 246, "local": "CORREDOR CENTRAL 2° ANDAR RUA:002 TRITON-14", "setor": "LOGISTICA B7", "numCilindro": 11136, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 228, "quantidade": 228, "idExtintor": 247, "local": "CORREDOR CENTRAL 2° ANDAR RUA:002 L CECCI-30", "setor": "LOGISTICA B7", "numCilindro": 63700, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 229, "quantidade": 229, "idExtintor": 248, "local": "CORREDOR CENTRAL 3° ANDAR ANTIGO TRITON/ESTOQUE RUA:32", "setor": "LOGISTICA B7", "numCilindro": 15124, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 230, "quantidade": 230, "idExtintor": 249, "local": "CORREDOR CENTRAL 3° ANDAR COLCCI SPORT RUA:02", "setor": "LOGISTICA B7", "numCilindro": 11258, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 231, "quantidade": 231, "idExtintor": 250, "local": "CORREDOR CENTRAL 3° ANDAR OPEN-22 RUA:48", "setor": "LOGISTICA B7", "numCilindro": 11217, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 232, "quantidade": 232, "idExtintor": 251, "local": "CORREDOR CENTRAL 3° ANDAR ANTIGO SPORT 57", "setor": "LOGISTICA B7", "numCilindro": 10989, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 233, "quantidade": 233, "idExtintor": 252, "local": "CORREDOR CENTRAL 3° ANDAR FRENTE AO ELEVADOR", "setor": "LOGISTICA B7", "numCilindro": 10868, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 234, "quantidade": 234, "idExtintor": 253, "local": "CORREDOR CENTRAL 3° ANDAR OPEN-44", "setor": "LOGISTICA B7", "numCilindro": 11192, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 235, "quantidade": 235, "idExtintor": 254, "local": "CORREDOR CENTRAL 3° ANDAR OPEN RUA:002", "setor": "LOGISTICA B7", "numCilindro": 10881, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 236, "quantidade": 236, "idExtintor": 255, "local": "CORREDOR CENTRAL 3° ANDAR SPORT RUA:44", "setor": "LOGISTICA B7", "numCilindro": 66277, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 237, "quantidade": 237, "idExtintor": 256, "local": "CORREDOR CENTRAL 3° ANDAR FORUM-46 RUA:006", "setor": "LOGISTICA B7", "numCilindro": 10215, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 238, "quantidade": 238, "idExtintor": 257, "local": "CORREDOR CENTRAL 3° ANDAR COLCCI-01 RUA:46", "setor": "LOGISTICA B7", "numCilindro": 10753, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 239, "quantidade": 239, "idExtintor": 258, "local": "CORREDOR CENTRAL 3° ANDAR COLCCI-01 RUA:46", "setor": "LOGISTICA B7", "numCilindro": 10798, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 240, "quantidade": 240, "idExtintor": 259, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 1°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 11014, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 241, "quantidade": 241, "idExtintor": 260, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 2°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 1467, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 242, "quantidade": 242, "idExtintor": 261, "local": "3° ANDAR BACKSTAGE", "setor": "PREDIO ESPELHADO", "numCilindro": 10766, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 243, "quantidade": 243, "idExtintor": 262, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 4°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 4205, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 244, "quantidade": 244, "idExtintor": 263, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 5°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 1303, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 245, "quantidade": 245, "idExtintor": 264, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 6°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 68311, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 246, "quantidade": 246, "idExtintor": 265, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 7°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 10866, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 247, "quantidade": 247, "idExtintor": 266, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 8°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 10780, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 248, "quantidade": 248, "idExtintor": 267, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 9°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 18819, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 249, "quantidade": 249, "idExtintor": 268, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 10°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 68215, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 250, "quantidade": 250, "idExtintor": 269, "local": "CORREDOR CENTRAL 4° NO INICIO DE FRENTE PARA A SAÍDA DO PRÉDIO 11°EXTINTOR", "setor": "LOGISTICA B7", "numCilindro": 11166, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 251, "quantidade": 251, "idExtintor": 270, "local": "CORREDOR DA DIREITA 1° ANDAR RUA: 6-4", "setor": "LOGISTICA B7", "numCilindro": 11054, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 252, "quantidade": 252, "idExtintor": 271, "local": "CORREDOR DA DIREITA 1° ANDAR-A, RUA: 40", "setor": "LOGISTICA B7", "numCilindro": 68988, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 253, "quantidade": 253, "idExtintor": 272, "local": "CORREDOR DA DIREITA 1° ANDAR RUA: 44", "setor": "LOGISTICA B7", "numCilindro": 10784, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 254, "quantidade": 254, "idExtintor": 273, "local": "CORREDOR DA DIREITA 1° ANDAR-B, RUA: 40", "setor": "LOGISTICA B7", "numCilindro": 68584, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 255, "quantidade": 255, "idExtintor": 274, "local": "CORREDOR DA DIREITA 2° ANDAR RUA: 44", "setor": "LOGISTICA B7", "numCilindro": 64927, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 256, "quantidade": 256, "idExtintor": 275, "local": "CORREDOR DA DIREITA 2° ANDAR RUA: 31", "setor": "LOGISTICA B7", "numCilindro": 21772, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 257, "quantidade": 257, "idExtintor": 276, "local": "CORREDOR DA DIREITA 2° ANDAR RUA: 34", "setor": "LOGISTICA B7", "numCilindro": 10935, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 258, "quantidade": 258, "idExtintor": 277, "local": "CORREDOR DA DIREITA 2° ANDAR RUA: 002", "setor": "LOGISTICA B7", "numCilindro": 68542, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 259, "quantidade": 259, "idExtintor": 278, "local": "CORREDOR DA DIREITA 2° ANDAR RUA: 44", "setor": "LOGISTICA B7", "numCilindro": 10892, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 260, "quantidade": 260, "idExtintor": 279, "local": "CORREDOR DA DIREITA 3° ANDAR, TRITON ANTIGO RUA: 08", "setor": "LOGISTICA B7", "numCilindro": 10772, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 261, "quantidade": 261, "idExtintor": 280, "local": "CORREDOR DA DIREITA 3° ANDAR, OPEN RUA: 58", "setor": "LOGISTICA B7", "numCilindro": 11044, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 262, "quantidade": 262, "idExtintor": 281, "local": "CORREDOR DA DIREITA 3° ANDAR, OPEN RUA: 38", "setor": "LOGISTICA B7", "numCilindro": 867, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 263, "quantidade": 263, "idExtintor": 282, "local": "CORREDOR DA DIREITA 3° ANDAR, FRENTE AO PORTÃO DE DESCARGA RUA: 08", "setor": "LOGISTICA B7", "numCilindro": 10811, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 264, "quantidade": 264, "idExtintor": 283, "local": "CORREDOR DA DIREITA, PORTA DE ENTRADA DO FEDEX 4° ANDAR", "setor": "LOGISTICA B7", "numCilindro": 84566, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 265, "quantidade": 265, "idExtintor": 284, "local": "CORREDOR DA DIREITA, PORTA DE ENTRADA DO FEDEX 4° ANDAR-2°", "setor": "LOGISTICA B7", "numCilindro": 11150, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 266, "quantidade": 266, "idExtintor": 285, "local": "CORREDOR DA DIREITA, PORTA DE ENTRADA DO FEDEX 4° ANDAR-COCA-32", "setor": "LOGISTICA B7", "numCilindro": 10768, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 267, "quantidade": 267, "idExtintor": 286, "local": "CORREDOR DA DIREITA, PORTA DE ENTRADA DO FEDEX 4° ANDAR-FORA DE LINHA (53)CLC", "setor": "LOGISTICA B7", "numCilindro": 10751, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 268, "quantidade": 268, "idExtintor": 287, "local": "CORREDOR DA DIREITA, PORTA DE ENTRADA DO FEDEX 4° ANDAR-FORA DE LINHA (523)TRITON", "setor": "LOGISTICA B7", "numCilindro": 10997, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 269, "quantidade": 269, "idExtintor": 288, "local": "AO LADO DA ESTEIRA", "setor": "LOGISTICA B7", "numCilindro": 68210, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 270, "quantidade": 270, "idExtintor": 289, "local": "1° MOSTRUÁRIO LATERAL ESQUERDO", "setor": "LOGISTICA B7", "numCilindro": 69041, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 271, "quantidade": 271, "idExtintor": 290, "local": "2° MOSTRUÁRIO LATERAL ESQUERDO", "setor": "LOGISTICA B7", "numCilindro": 68300, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 272, "quantidade": 272, "idExtintor": 291, "local": "FRENTE AO PORTA PALETTES DE PAPELÃO", "setor": "LOGISTICA B7", "numCilindro": 68939, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 273, "quantidade": 273, "idExtintor": 292, "local": "DOCA 05", "setor": "LOGISTICA B7", "numCilindro": 67783, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 274, "quantidade": 274, "idExtintor": 293, "local": "ATRÁS DO SETOR DO FATURAMENTO", "setor": "LOGISTICA B7", "numCilindro": 10759, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 275, "quantidade": 275, "idExtintor": 294, "local": "FRENTE AO SETOR DE FATURAMENTO", "setor": "LOGISTICA B7", "numCilindro": 11201, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 276, "quantidade": 276, "idExtintor": 295, "local": "SEGUNDO POSTO DO VIGILANTE", "setor": "LOGISTICA B7", "numCilindro": 10893, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 277, "quantidade": 277, "idExtintor": 296, "local": "AO LADO DO 2° POSTO DO VIGILANTE", "setor": "LOGISTICA B7", "numCilindro": 17264, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 278, "quantidade": 278, "idExtintor": 297, "local": "LATERAL ESQUERDA DAS MÁQUINAS SELADORAS", "setor": "LOGISTICA B7", "numCilindro": 10926, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 279, "quantidade": 279, "idExtintor": 298, "local": "1° ANDAR RUA: 002 COLCCI-01", "setor": "LOGISTICA B7", "numCilindro": 10900, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 280, "quantidade": 280, "idExtintor": 299, "local": "2°ANDAR AO LADO DO ELEVADOR", "setor": "LOGISTICA B7", "numCilindro": 10901, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 281, "quantidade": 281, "idExtintor": 301, "local": "FRENTE AO 2° ELEVADOR RUA:58, NO 3° ANDAR", "setor": "LOGISTICA B7", "numCilindro": 10807, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 282, "quantidade": 282, "idExtintor": 320, "local": "FRENTE AO PORTÃO DO PORTA PALETES, RUA: 30, NO 2° ANDAR", "setor": "LOGISTICA B7", "numCilindro": 11152, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 283, "quantidade": 283, "idExtintor": 321, "local": "FRENTE AO 2° ELEVADOR RUA:67, NO 4° ANDAR", "setor": "LOGISTICA B7", "numCilindro": 68769, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 284, "quantidade": 284, "idExtintor": 322, "local": "FRENTE AO QUADRO DE META, RUA: 31 À 32", "setor": "LOGISTICA B7", "numCilindro": 97867, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 285, "quantidade": 285, "idExtintor": 323, "local": "FRENTE DA MESA DE ENTREGA DE BOLETOS", "setor": "LOGISTICA B7", "numCilindro": 52036, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 286, "quantidade": 286, "idExtintor": 302, "local": "NA CAIXA DE ÁGUA 01", "setor": "CAIXA DE ÁGUA", "numCilindro": 34741, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 287, "quantidade": 287, "idExtintor": 303, "local": "NA CAIXA DE ÁGUA 02", "setor": "CAIXA DE ÁGUA", "numCilindro": 84003, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 288, "quantidade": 288, "idExtintor": 304, "local": "NA CAIXA DE ÁGUA 03", "setor": "CAIXA DE ÁGUA", "numCilindro": 69103, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 289, "quantidade": 289, "idExtintor": 305, "local": "NA CAIXA DE ÁGUA 04", "setor": "CAIXA DE ÁGUA", "numCilindro": 28167, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 290, "quantidade": 290, "idExtintor": 306, "local": "NA CAIXA DE ÁGUA 05", "setor": "CAIXA DE ÁGUA", "numCilindro": 10911, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 291, "quantidade": 291, "idExtintor": 308, "local": "MESANINO - A", "setor": "ALMOXARIFADO", "numCilindro": 99335, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 292, "quantidade": 292, "idExtintor": 309, "local": "MESANINO - B", "setor": "ALMOXARIFADO", "numCilindro": 5706, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 293, "quantidade": 293, "idExtintor": 310, "local": "MESANINO - C", "setor": "ALMOXARIFADO", "numCilindro": 11235, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 294, "quantidade": 294, "idExtintor": 311, "local": "SALA DO NOBREK DA CONVENÇÃO", "setor": "ADM", "numCilindro": 10331, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 295, "quantidade": 295, "idExtintor": 315, "local": "PILOTAGEM", "setor": "PILOTAGEM", "numCilindro": 69131, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 296, "quantidade": 296, "idExtintor": 316, "local": "MAQUINA DE CORTE A LAISER 01", "setor": "CORTE", "numCilindro": 8010, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 297, "quantidade": 297, "idExtintor": 317, "local": "MAQUINA DE CORTE A LAISER 02", "setor": "CORTE", "numCilindro": 17896, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 298, "quantidade": 298, "idExtintor": 1541, "local": "MAQUINA DE CORTE A LAISER 03", "setor": "CORTE", "numCilindro": 547614, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/08/2027", "manut3": "01/08/2029"}, {"id": 299, "quantidade": 299, "idExtintor": 937, "local": "MAQUINA DE CORTE A LAISER 04", "setor": "CORTE", "numCilindro": 49577, "tipo": "CO2", "capacidade": "6kg", "manut2": "01/08/2027", "manut3": "01/08/2029"}, {"id": 300, "quantidade": 300, "idExtintor": 318, "local": "SALA DO ADM", "setor": "LOGISTICA B7", "numCilindro": 68219, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 301, "quantidade": 301, "idExtintor": 319, "local": "QUALIDADE LADO DIRETO", "setor": "QUALIDADE", "numCilindro": 52557, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 302, "quantidade": 302, "idExtintor": 324, "local": "SALA DO COFFEE", "setor": "ADM", "numCilindro": 11101, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 303, "quantidade": 303, "idExtintor": 325, "local": "CD FRENTE AO ADM", "setor": "CD", "numCilindro": 64080, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 304, "quantidade": 304, "idExtintor": 326, "local": "CAIXA DE ÁGUA 06", "setor": "CAIXA DE ÁGUA", "numCilindro": 68684, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 305, "quantidade": 305, "idExtintor": 355, "local": "2° ANDAR JUNTO AO HIDRANTE RESERVA", "setor": "PREDIO ESPELHADO", "numCilindro": 5710, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 306, "quantidade": 306, "idExtintor": 356, "local": "2° ANDAR JUNTO AO HIDRANTE RESERVA", "setor": "PREDIO ESPELHADO", "numCilindro": 5254, "tipo": "ÁGUA", "capacidade": "10L", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 307, "quantidade": 307, "idExtintor": 358, "local": "2° ANDAR JUNTO AO HIDRANTE RESERVA", "setor": "PREDIO ESPELHADO", "numCilindro": 11033, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 308, "quantidade": 308, "idExtintor": 241, "local": "3° ANDAR SALA DE CONVEÇÕES FRENTE AO ELEVADOR", "setor": "PREDIO ESPELHADO", "numCilindro": 10687, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 309, "quantidade": 309, "idExtintor": 344, "local": "3° ANDAR SALA DE CONVENÇÕES", "setor": "PREDIO ESPELHADO", "numCilindro": 63584, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 310, "quantidade": 310, "idExtintor": 345, "local": "3° ANDAR BACKSTAGE", "setor": "PREDIO ESPELHADO", "numCilindro": 68220, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 311, "quantidade": 311, "idExtintor": 346, "local": "3° ANDAR BACKSTAGE", "setor": "PREDIO ESPELHADO", "numCilindro": 10810, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 312, "quantidade": 312, "idExtintor": 327, "local": "LADO DE FORA DA DOCA DO CD ATRÁS DA CASA DOS EXTINTORES", "setor": "CD", "numCilindro": 11845, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 313, "quantidade": 313, "idExtintor": 348, "local": "ESTUDIO TRITON E REPLAY", "setor": "CD", "numCilindro": 58487, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}, {"id": 314, "quantidade": 314, "idExtintor": 351, "local": "MEZANINO 4° ANDAR", "setor": "LOGISTICA B7", "numCilindro": 68841, "tipo": "PÓ QUÍMICO", "capacidade": "4kg", "manut2": "01/09/2026", "manut3": "01/09/2028"}];
+
+const CHECK_COLS = [
+  {key:'acesso',  label:'Acesso'},
+  {key:'placa',   label:'Placa de sinalização'},
+  {key:'sinPiso', label:'Sinalização de piso'},
+  {key:'lacre',   label:'Lacre'},
+  {key:'manometro',label:'Manômetro'},
+  {key:'mangueira',label:'Mangueira'},
+  {key:'inmetro', label:'Selo INMETRO'},
+  {key:'garantia',label:'Selo GARANTIA'},
+  {key:'pintura', label:'Pintura Extintor'},
+  {key:'gatilho', label:'Gatilho'}
+];
+
+const OBS_OPTIONS = [
+  "Extintor sem sinalização visível",
+  "Placa de sinalização danificada ou ausente",
+  "Sinalização de piso apagada/ausente",
+  "Lacre rompido ou ausente",
+  "Manômetro fora da faixa de pressão adequada",
+  "Mangueira ressecada, rachada ou danificada",
+  "Selo do INMETRO ausente ou ilegível",
+  "Selo de garantia vencido ou ausente",
+  "Pintura descascada / corrosão aparente no cilindro",
+  "Gatilho travado ou danificado",
+  "Extintor com acesso obstruído",
+  "Extintor fora do suporte/pendurado incorretamente",
+  "Suporte de fixação danificado",
+  "Data de validade da carga vencida",
+  "Necessita recarga imediata",
+  "Necessita substituição do equipamento",
+  "Necessita manutenção de 2º nível",
+  "Necessita manutenção de 3º nível",
+  "Extintor removido/realocado do local original",
+  "Sem observações — item conforme"
+];
+
+/* estado de preenchimento do checklist, por id do extintor */
+const state = {};
+EXTINTORES.forEach(ex=>{
+  const chk = {};
+  CHECK_COLS.forEach(c=> chk[c.key] = '');
+  state[ex.id] = { chk, obs:'' };
+});
+
+/* ============================================================
+   POPULAR SELECTS DE FILTRO / DATALIST
+   ============================================================ */
+function unique(arr){ return [...new Set(arr.filter(v=>v!==undefined && v!==null && v!==''))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR')); }
+
+function esc(x){
+  return String(x ?? '').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+const fSetorEl = document.getElementById('fSetor');
+const fTipoEl = document.getElementById('fTipo');
+const listaSetoresEl = document.getElementById('listaSetores');
+
+function rebuildFilterOptions(){
+  const setores = unique(EXTINTORES.map(e=>e.setor));
+  const tipos   = unique(EXTINTORES.map(e=>e.tipo));
+
+  const prevSetor = fSetorEl.value, prevTipo = fTipoEl.value;
+
+  fSetorEl.innerHTML = '<option value="">Todos</option>';
+  setores.forEach(s=>{
+    const o = document.createElement('option'); o.value = s; o.textContent = s; fSetorEl.appendChild(o);
+  });
+  fTipoEl.innerHTML = '<option value="">Todos</option>';
+  tipos.forEach(t=>{
+    const o = document.createElement('option'); o.value = t; o.textContent = t; fTipoEl.appendChild(o);
+  });
+  listaSetoresEl.innerHTML = '';
+  setores.forEach(s=>{
+    const o = document.createElement('option'); o.value = s; listaSetoresEl.appendChild(o);
+  });
+
+  if(setores.includes(prevSetor)) fSetorEl.value = prevSetor;
+  if(tipos.includes(prevTipo)) fTipoEl.value = prevTipo;
+}
+rebuildFilterOptions();
+
+document.getElementById('respData').valueAsDate = new Date();
+
+/* ============================================================
+   HELPERS DE DATA (Manutenção vencida)
+   ============================================================ */
+function parseBrDate(str){
+  const [d,m,y] = str.split('/').map(Number);
+  return new Date(y, m-1, d);
+}
+const HOJE = new Date(); HOJE.setHours(0,0,0,0);
+function isVencido(str){ return parseBrDate(str) < HOJE; }
+
+/* ============================================================
+   RENDERIZAÇÃO DA TABELA
+   ============================================================ */
+const tbody = document.getElementById('tableBody');
+
+function buildRow(ex){
+  const tr = document.createElement('tr');
+  tr.dataset.id = ex.id;
+
+  const vencido2 = isVencido(ex.manut2);
+  const vencido3 = isVencido(ex.manut3);
+
+  tr.innerHTML = `
+    <td class="col-qtd num"><input class="ed" data-f="quantidade" value="${esc(ex.quantidade)}"></td>
+    <td class="col-id num"><input class="ed" data-f="idExtintor" value="${esc(ex.idExtintor)}"></td>
+    <td class="col-local"><input class="ed" data-f="local" value="${esc(ex.local)}"></td>
+    <td><input class="ed" data-f="setor" value="${esc(ex.setor)}"></td>
+    <td class="num"><input class="ed" data-f="numCilindro" value="${esc(ex.numCilindro)}"></td>
+    <td><input class="ed" data-f="tipo" value="${esc(ex.tipo)}"></td>
+    <td><input class="ed" data-f="capacidade" value="${esc(ex.capacidade)}"></td>
+    <td class="num datecell"><input class="ed" data-f="manut2" placeholder="dd/mm/aaaa" value="${esc(ex.manut2)}">${vencido2 ? '<span class="badge-overdue">VENCIDO</span>' : ''}</td>
+    <td class="num datecell"><input class="ed" data-f="manut3" placeholder="dd/mm/aaaa" value="${esc(ex.manut3)}">${vencido3 ? '<span class="badge-overdue">VENCIDO</span>' : ''}</td>
+  `;
+
+  const savedState = state[ex.id] || { chk:{}, obs:'' };
+
+  CHECK_COLS.forEach(c=>{
+    const td = document.createElement('td');
+    const sel = document.createElement('select');
+    sel.className = 'chk';
+    sel.dataset.id = ex.id;
+    sel.dataset.key = c.key;
+    sel.innerHTML = `
+      <option value="">—</option>
+      <option value="C">C</option>
+      <option value="NC">N/C</option>
+      <option value="NA">N/A</option>
+    `;
+    const savedVal = savedState.chk[c.key] || '';
+    sel.value = savedVal;
+    applyChkStatusClass(sel, savedVal);
+    sel.addEventListener('change', onChkChange);
+    td.appendChild(sel);
+    tr.appendChild(td);
+  });
+
+  const tdObs = document.createElement('td');
+  tdObs.className = 'col-obs';
+  const wrap = document.createElement('div');
+  wrap.className = 'obs-cell';
+  const quickSel = document.createElement('select');
+  quickSel.innerHTML = `<option value="">+ Adicionar observação rápida...</option>` +
+    OBS_OPTIONS.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');
+  quickSel.dataset.id = ex.id;
+  quickSel.addEventListener('change', onQuickObsSelect);
+  const textArea = document.createElement('textarea');
+  textArea.placeholder = 'Observações (livre ou via lista acima)';
+  textArea.dataset.id = ex.id;
+  textArea.value = savedState.obs || '';
+  textArea.addEventListener('input', onObsInput);
+  wrap.appendChild(quickSel);
+  wrap.appendChild(textArea);
+  tdObs.appendChild(wrap);
+  tr.appendChild(tdObs);
+
+  const tdActions = document.createElement('td');
+  tdActions.className = 'col-actions';
+  const actWrap = document.createElement('div');
+  actWrap.className = 'row-actions';
+  const btnAdv = document.createElement('button');
+  btnAdv.type = 'button';
+  btnAdv.className = 'btn-mini';
+  btnAdv.title = 'Subir linha';
+  btnAdv.textContent = '▲';
+  btnAdv.addEventListener('click', ()=> moveRow(ex.id, -1));
+  const btnDown = document.createElement('button');
+  btnDown.type = 'button';
+  btnDown.className = 'btn-mini';
+  btnDown.title = 'Descer linha';
+  btnDown.textContent = '▼';
+  btnDown.addEventListener('click', ()=> moveRow(ex.id, 1));
+  const btnDel = document.createElement('button');
+  btnDel.type = 'button';
+  btnDel.className = 'btn-mini del';
+  btnDel.title = 'Excluir extintor';
+  btnDel.textContent = '✕';
+  btnDel.addEventListener('click', ()=> deleteExtintor(ex.id));
+  actWrap.appendChild(btnAdv);
+  actWrap.appendChild(btnDown);
+  actWrap.appendChild(btnDel);
+  tdActions.appendChild(actWrap);
+  tr.appendChild(tdActions);
+
+  tr.querySelectorAll('.ed').forEach(inp=>{
+    inp.addEventListener('input', ()=> applyEdits(ex.id));
+  });
+
+  return tr;
+}
+
+EXTINTORES.forEach(ex=> tbody.appendChild(buildRow(ex)) );
+
+function applyChkStatusClass(sel, value){
+  sel.classList.remove('status-c','status-nc','status-na');
+  if(value === 'C') sel.classList.add('status-c');
+  else if(value === 'NC') sel.classList.add('status-nc');
+  else if(value === 'NA') sel.classList.add('status-na');
+}
+
+function onChkChange(e){
+  const sel = e.target;
+  const id = sel.dataset.id, key = sel.dataset.key;
+  state[id].chk[key] = sel.value;
+  applyChkStatusClass(sel, sel.value);
+  updateStats();
+  markDirty();
+}
+
+function onQuickObsSelect(e){
+  const sel = e.target;
+  const id = sel.dataset.id;
+  const val = sel.value;
+  if(!val) return;
+  const ta = sel.closest('.obs-cell').querySelector('textarea');
+  const current = ta.value.trim();
+  if(current.length === 0){
+    ta.value = val;
+  } else if(!current.includes(val)){
+    ta.value = current + '; ' + val;
+  }
+  state[id].obs = ta.value;
+  markDirty();
+  sel.value = '';
+}
+
+function onObsInput(e){
+  const ta = e.target;
+  state[ta.dataset.id].obs = ta.value;
+  markDirty();
+}
+
+/* ============================================================
+   ADICIONAR / EDITAR / EXCLUIR / REORDENAR EXTINTORES
+   ============================================================ */
+function renderAll(){
+  tbody.innerHTML = '';
+  EXTINTORES.forEach(ex=> tbody.appendChild(buildRow(ex)));
+  updateStats();
+  applyFilters();
+}
+
+function applyEdits(id){
+  const ex = EXTINTORES.find(e=> e.id === id);
+  if(!ex) return;
+  const tr = tbody.querySelector('tr[data-id="'+id+'"]');
+  if(!tr) return;
+  tr.querySelectorAll('.ed').forEach(inp=>{
+    ex[inp.dataset.f] = inp.value.trim();
+  });
+  updateStats();
+  applyFilters();
+  markDirty();
+}
+
+function deleteExtintor(id){
+  const ex = EXTINTORES.find(e=> e.id === id);
+  if(!ex) return;
+  openConfirm('Excluir extintor', 'Deseja realmente excluir o extintor "' + (ex.local || '') + '"? A exclusão será aplicada na planilha ao salvar.', 'Sim, excluir')
+    .then(ok=>{
+      if(!ok) return;
+      const idx = EXTINTORES.findIndex(e=> e.id === id);
+      if(idx === -1) return;
+      EXTINTORES.splice(idx,1);
+      delete state[id];
+      renderAll();
+      markDirty();
+    });
+}
+
+function addExtintor(){
+  const id = EXTINTORES.length ? Math.max(...EXTINTORES.map(e=>e.id)) + 1 : 1;
+  const ex = {
+    id,
+    quantidade: EXTINTORES.length + 1,
+    idExtintor: id,
+    local: 'NOVO',
+    setor: '',
+    numCilindro: '',
+    tipo: 'PÓ QUÍMICO',
+    capacidade: '',
+    manut2: '',
+    manut3: ''
+  };
+  EXTINTORES.push(ex);
+  state[id] = { chk:{}, obs:'' };
+  renderAll();
+  markDirty();
+  const tr = tbody.querySelector('tr[data-id="'+id+'"]');
+  if(tr){
+    tr.scrollIntoView({ block:'nearest' });
+    tr.querySelector('.ed[data-f="local"]').select();
+  }
+}
+
+function moveRow(id, dir){
+  const idx = EXTINTORES.findIndex(e=> e.id === id);
+  const target = idx + dir;
+  if(idx === -1 || target < 0 || target >= EXTINTORES.length) return;
+  [EXTINTORES[idx], EXTINTORES[target]] = [EXTINTORES[target], EXTINTORES[idx]];
+  renderAll();
+  markDirty();
+}
+
+document.getElementById('btnNewExtintor').addEventListener('click', addExtintor);
+
+/* ============================================================
+   ESTATÍSTICAS
+   ============================================================ */
+function updateStats(){
+  let c=0,nc=0,na=0,pend=0, totalItems=0;
+  Object.values(state).forEach(s=>{
+    CHECK_COLS.forEach(col=>{
+      totalItems++;
+      const v = s.chk[col.key];
+      if(v==='C') c++;
+      else if(v==='NC') nc++;
+      else if(v==='NA') na++;
+      else pend++;
+    });
+  });
+  document.getElementById('statTotal').textContent = EXTINTORES.length;
+  document.getElementById('statC').textContent = c;
+  document.getElementById('statNC').textContent = nc;
+  document.getElementById('statNA').textContent = na;
+  document.getElementById('statPend').textContent = pend;
+}
+updateStats();
+
+/* ============================================================
+   FILTROS E PESQUISA
+   ============================================================ */
+function applyFilters(){
+  const q = document.getElementById('fSearch').value.trim().toLowerCase();
+  const setor = document.getElementById('fSetor').value;
+  const tipo = document.getElementById('fTipo').value;
+  const status = document.getElementById('fStatus').value;
+  const soVencido = document.getElementById('fVencido').checked;
+
+  let visible = 0;
+  Array.from(tbody.children).forEach(tr=>{
+    const id = tr.dataset.id;
+    const ex = EXTINTORES.find(e=> e.id == id);
+    let show = true;
+
+    if(q){
+      const hay = `${ex.idExtintor} ${ex.local} ${ex.setor} ${ex.numCilindro}`.toLowerCase();
+      if(!hay.includes(q)) show = false;
+    }
+    if(show && setor && ex.setor !== setor) show = false;
+    if(show && tipo && ex.tipo !== tipo) show = false;
+
+    if(show && status){
+      const vals = CHECK_COLS.map(c=> state[id].chk[c.key]);
+      if(status === 'nc' && !vals.includes('NC')) show = false;
+      if(status === 'pend' && !vals.includes('')) show = false;
+      if(status === 'complete' && vals.includes('')) show = false;
+    }
+
+    if(show && soVencido){
+      if(!(isVencido(ex.manut2) || isVencido(ex.manut3))) show = false;
+    }
+
+    tr.classList.toggle('row-hidden', !show);
+    if(show) visible++;
+  });
+
+  document.getElementById('resultCount').textContent =
+    `Exibindo ${visible} de ${EXTINTORES.length} extintores`;
+}
+
+['fSearch','fSetor','fTipo','fStatus'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', applyFilters);
+  document.getElementById(id).addEventListener('change', applyFilters);
+});
+document.getElementById('fVencido').addEventListener('change', applyFilters);
+document.getElementById('btnClearFilters').addEventListener('click', ()=>{
+  document.getElementById('fSearch').value = '';
+  document.getElementById('fSetor').value = '';
+  document.getElementById('fTipo').value = '';
+  document.getElementById('fStatus').value = '';
+  document.getElementById('fVencido').checked = false;
+  applyFilters();
+});
+applyFilters();
+
+/* ============================================================
+   NORMALIZAÇÃO DE CABEÇALHOS (usada pelo carregamento da nuvem)
+   ============================================================ */
+function normalizeHeader(str){
+  return String(str==null ? '' : str)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g,'');
+}
+
+function loadImportedData(newExt, newState){
+  EXTINTORES.length = 0;
+  EXTINTORES.push(...newExt);
+
+  Object.keys(state).forEach(k=> delete state[k]);
+  Object.assign(state, newState);
+
+  rebuildFilterOptions();
+
+  tbody.innerHTML = '';
+  EXTINTORES.forEach(ex=> tbody.appendChild(buildRow(ex)));
+
+  updateStats();
+  applyFilters();
+}
+
+/* ============================================================
+   EXPORTAÇÃO — EXCEL (XLSX)
+   ============================================================ */
+function getMeta(){
+  return {
+    responsavel: document.getElementById('respNome').value || '(não informado)',
+    setor: document.getElementById('respSetor').value || '(não informado)',
+    data: document.getElementById('respData').value || '(não informado)'
+  };
+}
+
+function buildExportRows(){
+  return EXTINTORES.map(ex=>{
+    const s = state[ex.id];
+    const row = {
+      'Quantidade': ex.quantidade,
+      'Nº ID-Extintores': ex.idExtintor,
+      'Local': ex.local,
+      'Setor': ex.setor,
+      'Número do Cilindro': ex.numCilindro,
+      'Tipo': ex.tipo,
+      'Capacidade': ex.capacidade,
+      'Manutenção 2º nível': ex.manut2,
+      'Manutenção 3º nível': ex.manut3,
+    };
+    CHECK_COLS.forEach(c=>{
+      const v = s.chk[c.key];
+      row[c.label] = v === 'NC' ? 'N/C' : (v === 'NA' ? 'N/A' : (v || ''));
+    });
+    row['Observação'] = s.obs || '';
+    return row;
+  });
+}
+
+/* ============================================================
+   SALVAR / CARREGAR GOOGLE SHEETS (Web App do Apps Script)
+   ============================================================ */
+let WEBAPP_URL = '';
+try { WEBAPP_URL = localStorage.getItem('rg007_webapp_url') || ''; } catch(e){}
+
+const webappUrlEl = document.getElementById('webappUrl');
+const btnClearSheetUrl = document.getElementById('btnClearSheetUrl');
+if(webappUrlEl){
+  webappUrlEl.value = WEBAPP_URL;
+  webappUrlEl.addEventListener('input', ()=>{
+    WEBAPP_URL = webappUrlEl.value.trim();
+    try { localStorage.setItem('rg007_webapp_url', WEBAPP_URL); } catch(e){}
+  });
+}
+if(btnClearSheetUrl) btnClearSheetUrl.addEventListener('click', async ()=>{
+  const ok = await openConfirm('Limpar URL do Web App', 'Deseja realmente remover a URL do Web App? O formulário voltará a usar a base embutida e não será possível salvar/carregar da planilha até configurar uma nova URL.', 'Sim, limpar');
+  if(!ok) return;
+  WEBAPP_URL = '';
+  webappUrlEl.value = '';
+  try { localStorage.removeItem('rg007_webapp_url'); } catch(e){}
+  showSaveMsg('URL removida. O formulário voltou a usar a base embutida.', 'loading');
+});
+
+function showSaveMsg(text, kind){
+  const el = document.getElementById('saveMsg');
+  if(!el) return;
+  el.textContent = text;
+  el.className = 'import-msg ' + kind;
+}
+
+function rowNormMap(r){
+  const m = {};
+  Object.keys(r||{}).forEach(h=>{ m[normalizeHeader(h)] = r[h]; });
+  return m;
+}
+
+function loadFromSheet(){
+  if(!WEBAPP_URL){
+    showSaveMsg('Configure a URL do Web App no campo acima para carregar da planilha.', 'error');
+    return Promise.reject(new Error('URL não configurada'));
+  }
+  showSaveMsg('Carregando dados da planilha...', 'loading');
+  return fetch(WEBAPP_URL + (WEBAPP_URL.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache:'no-store' })
+    .then(res=> res.json())
+    .then(o=>{
+      if(!o || !Array.isArray(o.rows)) throw new Error('Resposta inválida do Web App. Verifique a URL.');
+      const newExt = [], newState = {};
+      o.rows.forEach((r,i)=>{
+        const m = rowNormMap(r);
+        const id = i + 1;
+        newExt.push({
+          id,
+          quantidade:  Number(m['quantidade'])  || id,
+          idExtintor:  m['nidextintores'] != null ? String(m['nidextintores']).trim() : '',
+          local:       String(m['local']||'').trim(),
+          setor:       String(m['setor']||'').trim(),
+          numCilindro: m['numerodocilindro'] != null ? String(m['numerodocilindro']).trim() : '',
+          tipo:        String(m['tipo']||'').trim(),
+          capacidade:  String(m['capacidade']||'').trim(),
+          manut2:      String(m['manutencao2nivel']||'').trim(),
+          manut3:      String(m['manutencao3nivel']||'').trim()
+        });
+        const chk = {};
+        CHECK_COLS.forEach(c=>{
+          let v = String(m[normalizeHeader(c.label)]||'').trim().toUpperCase();
+          if(v === 'N/C') v = 'NC';
+          if(v === 'N/A') v = 'NA';
+          if(!['C','NC','NA'].includes(v)) v = '';
+          chk[c.key] = v;
+        });
+        newState[id] = { chk, obs: String(m['observacao']||'').trim() };
+      });
+      loadImportedData(newExt, newState);
+      showSaveMsg(o.row_count + ' registros carregados da planilha · última leitura ' + (o.updated_at||'—'), 'success');
+      clearDirty();
+    });
+}
+
+/* ============================================================
+   MODAL DE CONFIRMAÇÃO E AVISO DE ALTERAÇÕES NÃO SALVAS
+   ============================================================ */
+const confirmModalEl = document.getElementById('confirmModal');
+const confirmTitleEl = document.getElementById('confirmTitle');
+const confirmTextEl = document.getElementById('confirmText');
+const confirmOkEl = document.getElementById('confirmOk');
+let confirmCb = null;
+
+function openConfirm(title, text, okLabel){
+  confirmTitleEl.textContent = title;
+  confirmTextEl.textContent = text;
+  confirmOkEl.textContent = okLabel || 'Confirmar';
+  confirmModalEl.hidden = false;
+  return new Promise(res=>{ confirmCb = res; });
+}
+function closeConfirm(result){
+  confirmModalEl.hidden = true;
+  const cb = confirmCb; confirmCb = null;
+  if(cb) cb(result);
+}
+confirmOkEl.addEventListener('click', ()=> closeConfirm(true));
+document.getElementById('confirmCancel').addEventListener('click', ()=> closeConfirm(false));
+confirmModalEl.addEventListener('click', (e)=>{ if(e.target === confirmModalEl) closeConfirm(false); });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeConfirm(false); });
+
+let dirty = false;
+const pendingBarEl = document.getElementById('pendingBar');
+function markDirty(){
+  dirty = true;
+  if(pendingBarEl) pendingBarEl.hidden = false;
+}
+function clearDirty(){
+  dirty = false;
+  if(pendingBarEl) pendingBarEl.hidden = true;
+}
+document.getElementById('pendingSave').addEventListener('click', async ()=>{
+  if(!WEBAPP_URL){
+    showSaveMsg('Configure a URL do Web App (campo acima) antes de salvar.', 'error');
+    return;
+  }
+  const ok = await openConfirm('Salvar na planilha', 'Deseja realmente salvar as alterações na planilha? Os dados atuais do formulário substituirão o conteúdo da planilha na nuvem.', 'Sim, salvar');
+  if(!ok) return;
+  saveToSheet();
+});
+document.getElementById('pendingDismiss').addEventListener('click', ()=>{
+  if(pendingBarEl) pendingBarEl.hidden = true;
+});
+
+function saveToSheet(){
+  const payload = JSON.stringify({ meta: getMeta(), rows: buildExportRows() });
+  showSaveMsg('Enviando dados para a planilha...', 'loading');
+  fetch(WEBAPP_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: payload })
+    .then(res=> res.json())
+    .then(o=>{
+      if(o && o.ok){
+        showSaveMsg('✓ ' + (o.message || 'Dados salvos na planilha com sucesso.'), 'success');
+        clearDirty();
+      }
+      else throw new Error((o && o.error) || 'Falha ao salvar.');
+    })
+    .catch(err=> showSaveMsg('Erro ao salvar: ' + err.message, 'error'));
+}
+
+const btnSaveSheet = document.getElementById('btnSaveSheet');
+if(btnSaveSheet) btnSaveSheet.addEventListener('click', async ()=>{
+  if(!WEBAPP_URL){
+    showSaveMsg('Configure a URL do Web App (campo acima) antes de salvar.', 'error');
+    return;
+  }
+  const ok = await openConfirm('Salvar na planilha', 'Deseja realmente salvar as alterações na planilha? Os dados atuais do formulário substituirão o conteúdo da planilha na nuvem.', 'Sim, salvar');
+  if(!ok) return;
+  saveToSheet();
+});
+
+const btnLoadSheet = document.getElementById('btnLoadSheet');
+if(btnLoadSheet) btnLoadSheet.addEventListener('click', async ()=>{
+  if(!WEBAPP_URL){
+    showSaveMsg('Configure a URL do Web App (campo acima) antes de carregar.', 'error');
+    return;
+  }
+  const aviso = dirty ? 'Há alterações não salvas no formulário que serão perdidas ao recarregar. ' : '';
+  const ok = await openConfirm('Recarregar da planilha', aviso + 'Deseja recarregar os dados da planilha no formulário?', 'Sim, recarregar');
+  if(!ok) return;
+  loadFromSheet().catch(err=> showSaveMsg('Erro ao carregar: ' + err.message, 'error'));
+});
+
+document.getElementById('btnExportXlsx').addEventListener('click', ()=>{
+  const meta = getMeta();
+  const rows = buildExportRows();
+  const headers = Object.keys(rows[0]);
+
+  const wsData = [
+    ['RELATÓRIO INSPEÇÃO DE EXTINTORES - RG 007'],
+    [`Responsável: ${meta.responsavel}    Setor: ${meta.setor}    Data da Inspeção: ${meta.data}`],
+    [],
+    headers,
+    ...rows.map(r=> headers.map(h=> r[h]))
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = headers.map(h=>{
+    let w = Math.max(h.length, 10);
+    if(h === 'Local' || h === 'Observação') w = 32;
+    return { wch: w + 2 };
+  });
+  ws['!merges'] = [
+    { s:{r:0,c:0}, e:{r:0,c:headers.length-1} },
+    { s:{r:1,c:0}, e:{r:1,c:headers.length-1} }
+  ];
+  ws['!freeze'] = { xSplit:0, ySplit:4 };
+  ws['!autofilter'] = { ref: `A4:${XLSX.utils.encode_col(headers.length-1)}4` };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Inspeção Extintores');
+  const fname = `RG007_Inspecao_Extintores_${(meta.data||'data').replaceAll('-','')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+});
+
+/* ============================================================
+   EXPORTAÇÃO — PDF
+   ============================================================ */
+document.getElementById('btnExportPdf').addEventListener('click', ()=>{
+  const meta = getMeta();
+  const rows = buildExportRows();
+  const headers = Object.keys(rows[0]);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(13);
+  doc.setFont(undefined,'bold');
+  doc.text('RELATÓRIO INSPEÇÃO DE EXTINTORES — RG 007', 28, 30);
+  doc.setFontSize(9);
+  doc.setFont(undefined,'normal');
+  doc.text(`Responsável: ${meta.responsavel}    |    Setor: ${meta.setor}    |    Data da Inspeção: ${meta.data}`, 28, 46);
+
+  const body = rows.map(r=> headers.map(h=> String(r[h] ?? '')));
+
+  doc.autoTable({
+    head: [headers],
+    body: body,
+    startY: 58,
+    margin: { left:16, right:16, bottom:20 },
+    styles:{
+      fontSize:6.2, cellPadding:2.2, overflow:'linebreak', valign:'middle',
+      lineColor:[217,220,216], lineWidth:0.3
+    },
+    headStyles:{ fillColor:[31,36,39], textColor:255, fontSize:6.4, halign:'center', valign:'middle' },
+    alternateRowStyles:{ fillColor:[250,250,249] },
+    columnStyles:{
+      0:{cellWidth:24}, 1:{cellWidth:26}, 2:{cellWidth:70}, 3:{cellWidth:42},
+      4:{cellWidth:34}, 5:{cellWidth:34}, 6:{cellWidth:28}, 7:{cellWidth:38}, 8:{cellWidth:38},
+      9:{cellWidth:26,halign:'center'},10:{cellWidth:26,halign:'center'},11:{cellWidth:26,halign:'center'},
+      12:{cellWidth:22,halign:'center'},13:{cellWidth:26,halign:'center'},14:{cellWidth:26,halign:'center'},
+      15:{cellWidth:26,halign:'center'},16:{cellWidth:26,halign:'center'},17:{cellWidth:26,halign:'center'},
+      18:{cellWidth:26,halign:'center'},
+      19:{cellWidth:'auto', minCellWidth:100}
+    },
+    didParseCell: function(data){
+      if(data.section === 'body' && data.column.index >= 9 && data.column.index <= 18){
+        const v = data.cell.raw;
+        if(v === 'N/C'){ data.cell.styles.fillColor = [251,230,233]; data.cell.styles.textColor=[143,11,32]; data.cell.styles.fontStyle='bold'; }
+        else if(v === 'C'){ data.cell.styles.fillColor = [229,244,236]; data.cell.styles.textColor=[30,130,76]; data.cell.styles.fontStyle='bold'; }
+        else if(v === 'N/A'){ data.cell.styles.fillColor = [253,243,224]; data.cell.styles.textColor=[138,99,0]; data.cell.styles.fontStyle='bold'; }
+      }
+    },
+    didDrawPage: function(data){
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      doc.text(
+        `Página ${doc.internal.getNumberOfPages()}`,
+        pageWidth - 60, doc.internal.pageSize.getHeight() - 8
+      );
+      doc.text('RG 007 — Relatório Inspeção de Extintores · Base 2026', 16, doc.internal.pageSize.getHeight() - 8);
+    }
+  });
+
+  const fname = `RG007_Inspecao_Extintores_${(meta.data||'data').replaceAll('-','')}.pdf`;
+  doc.save(fname);
+});
+
+/* ============================================================
+   CARREGAMENTO AUTOMATICO AO ABRIR
+   ============================================================ */
+if(WEBAPP_URL){
+  loadFromSheet().catch(()=>{ showSaveMsg('Não foi possível carregar da planilha automaticamente. Usando a base embutida — verifique a URL do Web App ou sua conexão.', 'error'); });
+}
+</script>
+</body>
+</html>
