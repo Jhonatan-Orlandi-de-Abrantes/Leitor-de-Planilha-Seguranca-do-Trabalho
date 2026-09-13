@@ -12,6 +12,15 @@
 var TZ = 'America/Sao_Paulo';
 var CACHE_KEY_BASE = 'nr23_last_';
 
+/* E-mails que recebem o aviso toda vez que algo e salvo na planilha
+   (botao "Salvar na planilha" do formulario). */
+var NOTIFY_EMAILS = ['tiago.abrantes@amctextil.com.br', 'tiago.atpl.759@gmail.com'];
+var NOTIFY_ENABLED = true;
+
+/* E-mails proibidos de GRAVAR na planilha (reforco da lista do
+   firebase-config.js). Deixe em branco para nao bloquear ninguem. */
+var BLOCKED_EMAILS = [];
+
 var PROFILES = [
   {
     id: 'extintores', sheet: 'Cont. extintores', headerRow: 7, dataStartRow: 8,
@@ -313,10 +322,26 @@ function doPost(e) {
     var rowsIn = (data && Array.isArray(data.rows)) ? data.rows : [];
     if (!rowsIn.length) throw new Error('Nenhuma linha recebida.');
 
+    /* Bloqueia gravacoes de e-mails proibidos. */
+    var authUser = data.user || {};
+    var authEmail = String(authUser.email || '').trim().toLowerCase();
+    for (var b = 0; b < BLOCKED_EMAILS.length; b++) {
+      if (String(BLOCKED_EMAILS[b]).trim().toLowerCase() === authEmail) {
+        return json_({ ok: false, error: 'Acesso negado: e-mail bloqueado.' });
+      }
+    }
+
     var sheet = getSheet(p);
     var lastRow = sheet.getLastRow();
     var lastCol = sheet.getLastColumn();
     var colMap = buildColMap(p, sheet, p.headerRow, lastCol);
+
+    var D = p.dataStartRow;
+    var M = Math.max(0, lastRow - D + 1);
+
+    /* Snapshot do conteudo ATUAL da aba, antes de gravar, para o diff. */
+    var beforeGrid = [];
+    if (M > 0) beforeGrid = sheet.getRange(D, 1, M, lastCol).getValues();
 
     var valuesGrid = [];
     for (var i = 0; i < rowsIn.length; i++) {
@@ -331,8 +356,6 @@ function doPost(e) {
       valuesGrid.push(rowVals);
     }
     var N = valuesGrid.length;
-    var D = p.dataStartRow;
-    var M = Math.max(0, lastRow - D + 1);
 
     if (N) sheet.getRange(D, 1, N, lastCol).setValues(valuesGrid);
 
@@ -347,7 +370,24 @@ function doPost(e) {
       } catch (fx) {}
     }
 
-    return json_({ ok: true, tipo: p.id, message: rowsIn.length + ' registro(s) salvos na planilha.' });
+    /* Sempre que o usuario clica em "Salvar na planilha" avisamos os
+       emails configurados, com quem alterou, quando, e o que mudou.
+       O resultado do envio volta na resposta para aparecer na tela. */
+    var notifyResult = { sent: false, error: '' };
+    try {
+      var diff = computeDiff(p, beforeGrid, valuesGrid, colMap, lastCol);
+      notifyResult = sendChangeReport(data, p, diff, M, N);
+    } catch (ex) {
+      notifyResult.error = String(ex.message || ex);
+      try { console.log('NR-23 notify error: ' + notifyResult.error); } catch (ce) {}
+    }
+
+    return json_({
+      ok: true,
+      tipo: p.id,
+      message: rowsIn.length + ' registro(s) salvos na planilha.',
+      notify: notifyResult
+    });
   } catch (e2) {
     return json_({ ok: false, error: String(e2.message || e2) });
   }
@@ -364,4 +404,178 @@ function saveCell(v, colDef) {
   if (typeof s === 'number' && isFinite(s)) return s;
   if (typeof s === 'string' && colDef.role === 'number' && /^-?\d+$/.test(s)) return Number(s);
   return String(s);
+}
+
+/* =====================================================================
+   DIFERENCA (diff) entre o que estava na planilha e o que foi salvo
+   ===================================================================== */
+
+function canonicalCell(v, colDef) {
+  if (colDef && colDef.role === 'date') {
+    if (v instanceof Date) return fmtDate(v);
+    if (typeof v === 'number' && isFinite(v) && v >= 20000 && v <= 80000) {
+      return fmtDate(new Date((v - 25569) * 86400000));
+    }
+  }
+  if (v instanceof Date) return fmtDate(v);
+  return clean(v);
+}
+
+function rowIdentity(p, grid, rowIndex, colMap, lastCol) {
+  var parts = [];
+  for (var i = 0; i < p.columns.length; i++) {
+    var c = p.columns[i];
+    if (c.role === 'id') {
+      var idx = colMap[c.key];
+      if (idx && idx <= lastCol) parts.push(canonicalCell(grid[rowIndex][idx - 1], c));
+    }
+  }
+  if (!parts.length) parts.push(String(rowIndex + 1));
+  return parts.join('|');
+}
+
+function computeDiff(p, beforeGrid, afterGrid, colMap, lastCol) {
+  var details = [];
+  var created = 0, deleted = 0, changesCount = 0;
+  var beforeIdx = {}, afterIdx = {}, keys = {};
+
+  for (var bi = 0; bi < beforeGrid.length; bi++) {
+    var bk = rowIdentity(p, beforeGrid, bi, colMap, lastCol);
+    (beforeIdx[bk] = beforeIdx[bk] || []).push(bi);
+    keys[bk] = 1;
+  }
+  for (var ai = 0; ai < afterGrid.length; ai++) {
+    var ak = rowIdentity(p, afterGrid, ai, colMap, lastCol);
+    (afterIdx[ak] = afterIdx[ak] || []).push(ai);
+    keys[ak] = 1;
+  }
+
+  for (var k in keys) {
+    var bArr = beforeIdx[k] || [];
+    var aArr = afterIdx[k] || [];
+    var nb = bArr.length, na = aArr.length;
+
+    if (na > nb) {
+      created += na - nb;
+      for (var t = nb; t < na; t++) {
+        details.push('REGISTRO CRIADO (identif. "' + k + '") na linha ' + (aArr[t] + 1) + ' da planilha.');
+      }
+    }
+    if (nb > na) {
+      deleted += nb - na;
+      for (var v = na; v < nb; v++) {
+        details.push('REGISTRO EXCLU\u00cdDO (identif. "' + k + '") - era a linha ' + (bArr[v] + 1) + ' da planilha.');
+      }
+    }
+
+    var n = Math.min(nb, na);
+    for (var u = 0; u < n; u++) {
+      var bRow = beforeGrid[bArr[u]], aRow = afterGrid[aArr[u]];
+      var changes = [];
+      for (var c2 = 0; c2 < p.columns.length; c2++) {
+        var cd = p.columns[c2];
+        var idxd = colMap[cd.key];
+        if (!idxd || idxd > lastCol) continue;
+        var oldV = canonicalCell(bRow[idxd - 1], cd);
+        var newV = canonicalCell(aRow[idxd - 1], cd);
+        if (oldV !== newV) changes.push(cd.label + ': "' + oldV + '" -> "' + newV + '"');
+      }
+      if (changes.length) {
+        changesCount++;
+        details.push('REGISTRO ALTERADO (identif. "' + k + '") na linha ' + (aArr[u] + 1) + ': ' + changes.join(' | '));
+      }
+    }
+  }
+
+  return { created: created, deleted: deleted, changesCount: changesCount, details: details };
+}
+
+/* =====================================================================
+   E-MAIL DE NOTIFICACAO - enviado a cada "Salvar na planilha"
+   ===================================================================== */
+
+function sendChangeReport(data, p, diff, beforeCount, afterCount) {
+  if (!NOTIFY_ENABLED) return { sent: false, error: 'NOTIFY_ENABLED=false' };
+  var meta = data.meta || {};
+  var user = data.user || {};
+  var now = new Date();
+
+  var L = [];
+  L.push('NR-23 - AVISO DE ALTERACAO NO FORMULARIO DE INSPECAO');
+  L.push('======================================================');
+  L.push('');
+  L.push('QUEM ALTEROU: ' + (user.name || '(nome nao informado)') + '  <' + (user.email || 'nao informado') + '>');
+  L.push('QUANDO: ' + fmtDateTime(now) + '  (fuso ' + TZ + ')');
+  L.push('');
+  L.push('TABELA: ' + p.title + ' (' + p.docCode + ' / aba "' + p.sheet + '")');
+  L.push('Registros antes: ' + beforeCount + '  |  Registros depois: ' + afterCount);
+  L.push('Criados: ' + diff.created + '  |  Excluidos: ' + diff.deleted + '  |  Alterados: ' + diff.changesCount);
+  L.push('');
+  L.push('DADOS DA INSPECAO:');
+  L.push('  Responsavel: ' + (meta.responsavel || 'nao informado'));
+  L.push('  Setor: ' + (meta.setor || 'nao informado'));
+  L.push('  Data da inspecao: ' + (meta.data || 'nao informado'));
+  L.push('');
+  if (diff.details.length) {
+    L.push('DETALHES DAS ALTERACOES:');
+    for (var i = 0; i < diff.details.length; i++) {
+      L.push(' - ' + diff.details[i]);
+    }
+  } else {
+    L.push('Nenhuma alteracao de conteudo detectada nesta gravacao.');
+  }
+  L.push('');
+  L.push('Este e-mail e automatico. Nao responda.');
+
+  var hms = Utilities.formatDate(now, TZ, 'HH:mm:ss');
+  var dmy = Utilities.formatDate(now, TZ, 'dd/MM/yyyy');
+  var subject = 'NR-23: alteracao em ' + p.title + ' por ' + (user.email || 'desconhecido') + ' - ' + dmy + ' ' + hms;
+
+  var recipients = NOTIFY_EMAILS.join(',');
+
+  /* Tenta MailApp; se nao estiver autorizado/permitido, cai para GmailApp.
+     Se ambos falharem, o erro e lancado e aparece no formulario. */
+  var errs = [];
+  try {
+    MailApp.sendEmail({ to: recipients, subject: subject, body: L.join('\n') });
+    return { sent: true, error: '' };
+  } catch (e1) {
+    errs.push('MailApp: ' + String(e1.message || e1));
+  }
+  try {
+    GmailApp.sendEmail(recipients, subject, L.join('\n'));
+    return { sent: true, error: '' };
+  } catch (e2) {
+    errs.push('GmailApp: ' + String(e2.message || e2));
+  }
+  throw new Error(errs.join(' | '));
+}
+
+/* ---------------------------------------------------------------------
+   TESTE MANUAL DE E-MAIL
+   Rode esta funcao no editor do Apps Script (menu "Executar"). Se pedir
+   permissao, clique em "Permitir/Revisar permissoes" — e ESSA permissao
+   que faltou e impede os avisos de chegarem.
+   --------------------------------------------------------------------- */
+function sendTestEmail() {
+  var ok = true, err = '';
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(','),
+      subject: 'NR-23 - Teste de envio de e-mail ' + fmtDateTime(new Date()),
+      body: 'Se voce recebeu este e-mail, o envio de notificacoes esta funcionando.\n\n' +
+        'Agora clique em "Salvar na planilha" no formulario e os avisos chegarao neste e-mail.'
+    });
+  } catch (e1) {
+    ok = false; err = String(e1.message || e1);
+    try {
+      GmailApp.sendEmail(NOTIFY_EMAILS.join(','), 'NR-23 - Teste de envio (GmailApp)', 'Envio via GmailApp funcionando.');
+      ok = true; err = '';
+    } catch (e2) {
+      err += ' | GmailApp: ' + String(e2.message || e2);
+    }
+  }
+  Logger.log(ok ? 'EMAIL ENVIADO para ' + NOTIFY_EMAILS.join(',') : 'FALHA: ' + err);
+  if (!ok) throw new Error(err);
+  return 'Enviado para ' + NOTIFY_EMAILS.join(',');
 }
